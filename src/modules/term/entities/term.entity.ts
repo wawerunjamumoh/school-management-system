@@ -2,7 +2,6 @@ import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
-  CreateDateColumn,
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
@@ -15,9 +14,9 @@ export class Term {
   id: string;
   @Column()
   termName: string;
-  @CreateDateColumn()
+  @Column({ type: 'date' })
   startDate: Date;
-  @CreateDateColumn()
+  @Column({ type: 'date' })
   endDate: Date;
 
 //   Rel: Many terms belong to one academic year

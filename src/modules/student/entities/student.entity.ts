@@ -18,6 +18,8 @@ export class Student {
   lastName: string;
   @Column()
   studentId: string;
+  @Column('uuid', { nullable: true, unique: true })
+  userId?: string;
 //   School Relationship - One school has many classes,class belongs to one school
   @ManyToOne(() => School,{onDelete: 'CASCADE'})
   @JoinColumn({name: 'schoolId'})
@@ -31,6 +33,6 @@ export class Student {
   @JoinColumn({name: 'classId'})
   class: Class ;
 
-  @Column()
-  classId: string;
+  @Column({ nullable: true })
+  classId?: string;
 }

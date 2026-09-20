@@ -24,6 +24,8 @@ export class Teacher {
   teacher_id: string;
   @Column()
   school_id: string;
+  @Column('uuid', { nullable: true, unique: true })
+  userId?: string;
   @ManyToMany(() => Subject)
   @JoinTable()
   subjects: Subject[];

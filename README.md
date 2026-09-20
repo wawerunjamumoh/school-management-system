@@ -1,118 +1,166 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# School Management System API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A multi-school NestJS API for school verification, role-aware dashboards, and secure student-result access. The platform supports a global super admin and school-scoped members: `SCHOOL_ADMIN`, `TEACHER`, `STUDENT`, and `GUARDIAN`. A school must be verified before its members can sign in.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Getting started
 
 ```bash
-$ npm install
+npm install
+npm run start:dev
 ```
 
-## Compile and run the project
+The API listens on `http://localhost:3000` by default.
+
+The local database connection is configured in `src/app.module.ts`. Before deployment, move credentials to environment variables, set strong `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` values, use migrations, and set TypeORM `synchronize` to `false`.
+
+## Authentication
+
+Protected routes require an access token:
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+Access tokens last 15 minutes; refresh tokens last 7 days.
+
+### School member login
+
+`POST /auth/login`
+
+Members sign in using their school code, school-specific identifier, and password. The school must be `VERIFIED` and the membership must be active.
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+curl -X POST http://localhost:3000/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"schoolCode":"GREENHILL","identifier":"STU-0001","password":"your-password"}'
 ```
 
-## Run tests
+```json
+{
+  "accessToken": "<jwt>",
+  "refreshToken": "<jwt>",
+  "membership": {
+    "id": "membership-uuid",
+    "schoolId": "school-uuid",
+    "role": "STUDENT"
+  }
+}
+```
+
+### Super-admin login
+
+`POST /auth/super-admin/login`
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+curl -X POST http://localhost:3000/auth/super-admin/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@example.com","password":"your-password"}'
 ```
 
-## Deployment
+The account must have the `SUPER_ADMIN` platform role.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### Refresh a session
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+`POST /auth/refresh`
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+curl -X POST http://localhost:3000/auth/refresh \
+  -H 'Content-Type: application/json' \
+  -d '{"refreshToken":"<refresh-token>"}'
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Super-admin school management
 
-## Observability
+All routes in this section require a super-admin access token.
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+### List schools
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+`GET /admin/schools`
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+```bash
+curl http://localhost:3000/admin/schools \
+  -H 'Authorization: Bearer <super-admin-access-token>'
+```
 
-This project is already instrumented. Create a free account at [observe.nestjs.com](https://observe.nestjs.com), add an application, and paste the generated app key and secret into the `ObserveModule.forRoot()` call in `src/app.module.ts`.
+### Register a school
 
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
+`POST /admin/schools`
 
-## Resources
+New schools are created as `PENDING` and must be verified before member login is permitted.
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+curl -X POST http://localhost:3000/admin/schools \
+  -H 'Authorization: Bearer <super-admin-access-token>' \
+  -H 'Content-Type: application/json' \
+  -d '{"schoolName":"Greenhill Academy","schoolCode":"GREENHILL","location":"Nairobi","schoolPhone":"+254700000000","schoolEmail":"office@greenhill.example"}'
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Verify or suspend a school
 
-## Support
+`PATCH /admin/schools/:schoolId/verification`
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+curl -X PATCH http://localhost:3000/admin/schools/<school-id>/verification \
+  -H 'Authorization: Bearer <super-admin-access-token>' \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"VERIFIED"}'
+```
 
-## Stay in touch
+Use `SUSPENDED` to prevent future school-member logins.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Dashboard and results
 
-## License
+These routes require a school-member access token. Results are returned only when their exam is published.
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### Role-aware dashboard
+
+`GET /dashboard`
+
+```bash
+curl http://localhost:3000/dashboard \
+  -H 'Authorization: Bearer <access-token>'
+```
+
+The response is role-specific:
+
+- `STUDENT`: student profile and published results.
+- `GUARDIAN`: linked children and each child’s published results.
+- School staff: school student, enrollment, and published-exam counts.
+
+### Student results
+
+`GET /students/:studentId/results`
+
+```bash
+curl http://localhost:3000/students/<student-id>/results \
+  -H 'Authorization: Bearer <access-token>'
+```
+
+Students can access only their own results. Guardians can access results only for students with an active guardian-student link. Staff access is constrained to their authenticated school.
+
+## Errors and validation
+
+All request bodies are validated. Unknown fields are rejected.
+
+| Status | Meaning |
+| --- | --- |
+| `400` | Invalid or missing request data. |
+| `401` | Missing, expired, malformed, or invalid credentials/token. |
+| `403` | Authenticated user lacks the required role, school scope, or guardian/student relationship. |
+| `404` | Requested school, student, profile, or resource was not found. |
+
+## Current API status
+
+The authentication, super-admin school, dashboard, and published-result APIs above are implemented. Other generated CRUD controllers under `src/modules` are scaffolding and should not yet be treated as production-ready persistence endpoints.
+
+## Checks
+
+```bash
+npm run build
+npm run lint
+npm run test
+```
+
+## HTTP request collection
+
+Use [test/api.http](test/api.http) with the JetBrains HTTP Client or VS Code REST Client to exercise every implemented endpoint documented above. Update the variables at the top of the file with seeded user credentials and resource UUIDs before sending requests. The named login requests pass their returned tokens automatically to subsequent requests.

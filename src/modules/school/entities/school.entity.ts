@@ -10,6 +10,12 @@ export class School {
   @Column({ name: 'school_name' })
   schoolName: string;
 
+  @Column({ name: 'school_code', unique: true })
+  schoolCode: string;
+
+  @Column({ name: 'verification_status', default: 'PENDING' })
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'SUSPENDED';
+
   @Column()
   location: string;
 

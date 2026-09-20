@@ -5,7 +5,7 @@ import {
   Entity,
   Unique,
   JoinColumn,
-  ManyToOne, ManyToMany
+  ManyToOne
 } from 'typeorm';
 import {Student} from '../../student/entities/student.entity.js'
 import {Class} from '../../class/entities/class.entity.js'
@@ -14,7 +14,7 @@ import {Term} from '../../term/entities/term.entity.js';
 
 @Entity('enrollment')
 // prevent student being enrolled in multiple classes the same term
-@Unique(['studentId','academicYear','termId'])
+@Unique(['studentId','academicYearId','termId'])
 export class Enrollment {
   @PrimaryGeneratedColumn()
   id: string;
@@ -32,7 +32,7 @@ export class Enrollment {
   studentId: string;
 
 //   Rel: Class has many enrollments,enrollment has one class
-  @ManyToMany(() => Class,{onDelete: 'RESTRICT'})
+  @ManyToOne(() => Class,{onDelete: 'RESTRICT'})
   @JoinColumn({name: 'classId'})
   class: Class;
 
@@ -41,7 +41,7 @@ export class Enrollment {
 
 // Rel: one academic year has may terms
   @ManyToOne(() => AcademicYear,{onDelete: 'RESTRICT'})
-  @JoinColumn({name: 'academicYear'})
+  @JoinColumn({name: 'academicYearId'})
   academicYear: AcademicYear;
 
   @Column()

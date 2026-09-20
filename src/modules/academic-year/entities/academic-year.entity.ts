@@ -2,7 +2,6 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
   JoinColumn,
   ManyToOne,
 } from 'typeorm';
@@ -14,9 +13,9 @@ export class AcademicYear {
   id: string;
   @Column()
   name: string;
-  @CreateDateColumn()
+  @Column({ type: 'date' })
   startDate: Date;
-  @CreateDateColumn()
+  @Column({ type: 'date' })
   endDate: Date;
 
 //   School Relationship

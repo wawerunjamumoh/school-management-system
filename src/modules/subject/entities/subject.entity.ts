@@ -26,7 +26,7 @@ export class Subject {
   term = Term;
 
   @Column()
-  tremId: string;
+  termId: string;
 
 //   Rel: Many class has many subjects
   @ManyToMany(() => Class,{onDelete: 'CASCADE'})

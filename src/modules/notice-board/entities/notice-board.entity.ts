@@ -16,7 +16,7 @@ export class NoticeBoard {
 
   @CreateDateColumn()
   publishedAt: Date;
-  @CreateDateColumn()
+  @Column({ type: 'timestamp' })
   expiresAt: Date;
 
   @Column()

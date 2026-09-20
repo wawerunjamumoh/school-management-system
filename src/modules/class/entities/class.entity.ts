@@ -5,6 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
+import type {Relation} from 'typeorm'
 import {School} from '../../school/entities/school.entity.js';
 
 @Entity('class')
@@ -23,7 +24,8 @@ export class Class {
     {onDelete: 'CASCADE'}
   )
   @JoinColumn({name: 'schoolId'})
-  school:School;
+  school: Relation<School>;
+
   @Column()
   schoolId: string;
 }

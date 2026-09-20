@@ -6,6 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
+import type { Relation} from 'typeorm';
 import { School } from '../../school/entities/school.entity.js';
 
 @Entity('events')
@@ -35,7 +36,7 @@ export class Event {
   // School relationship
   @ManyToOne(() => School, (school) => school.events, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'schoolId' }) // FIXED: wrapped schoolId in string quotes
-  school: School;
+  school: Relation<School>;
 
   @Column('uuid') // Explicitly marked as a UUID column type
   schoolId: string;

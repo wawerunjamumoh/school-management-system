@@ -3,7 +3,6 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
-  OneToOne,
   JoinColumn
 } from 'typeorm'
 import {Student} from '../../student/entities/student.entity.js';
@@ -28,8 +27,8 @@ export class ExamResult {
   studentId: string;
 
   //   Subject Relationship
-  @OneToOne(() => Subject, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'subjectId' })
+  @ManyToOne(() => Subject, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'termId' })
   subject: Subject;
 
   @Column()

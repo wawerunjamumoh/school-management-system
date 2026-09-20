@@ -2,22 +2,23 @@ import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
-  ManyToMany,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import {Guardian} from '../../guardian/entities/guardian.entity.js'
 import {Student} from '../../student/entities/student.entity.js';
 
 @Entity('guardian-student')
+@Unique(['guardianId', 'studentId'])
 export class GuardianStudent {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
 //   Student guardian relationship
-  @ManyToMany(() => Guardian,{onDelete: 'CASCADE'})
-  @JoinColumn({name: 'guardian-student'})
-  guardians: Guardian[];
+  @ManyToOne(() => Guardian,{onDelete: 'CASCADE'})
+  @JoinColumn({name: 'guardianId'})
+  guardian: Guardian;
 
   @Column()
   guardianId: string;
@@ -29,6 +30,9 @@ export class GuardianStudent {
 
   @Column()
   studentId: string;
+
+  @Column({ default: true })
+  isActive: boolean;
 
 
 }

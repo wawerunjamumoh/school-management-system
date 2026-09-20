@@ -1,0 +1,72 @@
+@baseUrl = http://localhost:3000
+@schoolCode = GREENHILL
+@identifier = STU-0001
+@password = your-password
+@superAdminEmail = admin@example.com
+@superAdminPassword = your-password
+@schoolId = replace-with-school-uuid
+@studentId = replace-with-student-uuid
+
+### School-member login
+# @name memberLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "schoolCode": "{{schoolCode}}",
+  "identifier": "{{identifier}}",
+  "password": "{{password}}"
+}
+
+### Refresh a school-member session
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{memberLogin.response.body.$.refreshToken}}"
+}
+
+### Super-admin login
+# @name superAdminLogin
+POST {{baseUrl}}/auth/super-admin/login
+Content-Type: application/json
+
+{
+  "email": "{{superAdminEmail}}",
+  "password": "{{superAdminPassword}}"
+}
+
+### List schools (super admin)
+GET {{baseUrl}}/admin/schools
+Authorization: Bearer {{superAdminLogin.response.body.$.accessToken}}
+
+### Create a pending school (super admin)
+# @name createSchool
+POST {{baseUrl}}/admin/schools
+Authorization: Bearer {{superAdminLogin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "schoolName": "Greenhill Academy",
+  "schoolCode": "GREENHILL-TEST",
+  "location": "Nairobi",
+  "schoolPhone": "+254700000000",
+  "schoolEmail": "office@greenhill-test.example"
+}
+
+### Verify a school (super admin)
+PATCH {{baseUrl}}/admin/schools/{{schoolId}}/verification
+Authorization: Bearer {{superAdminLogin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "status": "VERIFIED"
+}
+
+### Role-aware dashboard
+GET {{baseUrl}}/dashboard
+Authorization: Bearer {{memberLogin.response.body.$.accessToken}}
+
+### Published results for a student
+GET {{baseUrl}}/students/{{studentId}}/results
+Authorization: Bearer {{memberLogin.response.body.$.accessToken}}
