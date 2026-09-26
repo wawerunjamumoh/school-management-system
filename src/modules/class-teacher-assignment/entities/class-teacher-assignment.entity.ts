@@ -10,9 +10,9 @@ import { Teacher } from '../../teacher/entities/teacher.entity.js';
 import { Class } from '../../class/entities/class.entity.js';
 import { AcademicYear } from '../../academic-year/entities/academic-year.entity.js';
 
-@Entity('class_teacher_assignments') // Use underscores instead of dashes for DB table naming conventions
-@Unique(['teacherId', 'academicYearId']) // Enforces: 1 teacher can only manage 1 class per year
-@Unique(['classId', 'academicYearId']) // Enforces: 1 class can only have 1 main teacher per year
+@Entity('class_teacher_assignments')
+@Unique(['schoolId', 'teacherId', 'academicYearId'])
+@Unique(['schoolId', 'classId', 'academicYearId'])
 export class ClassTeacherAssignment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -40,4 +40,7 @@ export class ClassTeacherAssignment {
 
   @Column('uuid')
   academicYearId: string;
+  @Column('uuid')
+  schoolId: string;
+
 }

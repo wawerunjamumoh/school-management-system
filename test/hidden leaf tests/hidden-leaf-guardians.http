@@ -1,0 +1,50 @@
+@baseUrl = http://localhost:3000/api/v1/
+@schoolId = cb98d9d4-72d2-4723-b9c5-eaff89b30178
+
+### ==========================================
+### GUARDIAN 1 - Kushina
+### ==========================================
+
+POST {{baseUrl}}/auth/register/guardian
+Content-Type: application/json
+
+{
+  "firstName": "Kushina",
+  "lastName": "Uzumaki",
+  "email": "kushina@leaf.test",
+  "phone": "0722000001",
+  "schoolId": "{{schoolId}}",
+  "password": "Password123!"
+}
+
+### ==========================================
+### GUARDIAN 2 - Mebuki
+### ==========================================
+
+POST {{baseUrl}}/auth/register/guardian
+Content-Type: application/json
+
+{
+  "firstName": "Mebuki",
+  "lastName": "Haruno",
+  "email": "mebuki@leaf.test",
+  "phone": "0722000002",
+  "schoolId": "{{schoolId}}",
+  "password": "Password123!"
+}
+
+### ==========================================
+### GUARDIAN 3 - Fugaku
+### ==========================================
+
+POST {{baseUrl}}/auth/register/guardian
+Content-Type: application/json
+
+{
+  "firstName": "Fugaku",
+  "lastName": "Uchiha",
+  "email": "fugaku@leaf.test",
+  "phone": "0722000003",
+  "schoolId": "{{schoolId}}",
+  "password": "Password123!"
+}

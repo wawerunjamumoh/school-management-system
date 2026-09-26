@@ -1,0 +1,108 @@
+### ==========================================
+
+### VARIABLES
+
+### ==========================================
+
+@baseUrl = http://localhost:3000/api/v1/
+@schoolId = cb98d9d4-72d2-4723-b9c5-eaff89b30178
+@classId = 10cb48d2-281d-4fbc-9ca1-bbfa7342f2fd
+
+### ==========================================
+
+### CREATE CLASS
+
+### ==========================================
+
+### POST /schools/:schoolId/classes
+
+POST {{baseUrl}}/schools/{{schoolId}}/classes
+Content-Type: application/json
+
+{
+  "className": "Grade 6",
+  "capacity": 40,
+  "level": "Primary",
+  "stream": "A"
+}
+
+### ==========================================
+
+### 2.add class
+POST {{baseUrl}}/schools/{{schoolId}}/classes
+Content-Type: application/json
+
+{
+  "className": "Grade 6",
+  "capacity": 40,
+  "level": "grade 6",
+  "stream": "B"
+}
+
+### 3.Add class
+POST {{baseUrl}}/schools/{{schoolId}}/classes
+Content-Type: application/json
+
+{
+  "className": "Grade 7",
+  "capacity": 40,
+  "level": "grade 7",
+  "stream": "A"
+}
+
+### 4.Create class
+POST {{baseUrl}}/schools/{{schoolId}}/classes
+Content-Type: application/json
+
+{
+  "className": "Grade 7",
+  "capacity": 40,
+  "level": "grade 7",
+  "stream": "B"
+}
+
+### GET ALL CLASSES FOR SCHOOL
+
+### ==========================================
+
+### GET /schools/:schoolId/classes
+
+GET {{baseUrl}}/schools/{{schoolId}}/classes
+
+### ==========================================
+
+### GET ONE CLASS
+
+### ==========================================
+
+### GET /schools/:schoolId/classes/:classId
+
+GET {{baseUrl}}/schools/{{schoolId}}/classes/{{classId}}
+
+### ==========================================
+
+### UPDATE CLASS
+
+### ==========================================
+
+### PATCH /schools/:schoolId/classes/:classId
+
+PATCH {{baseUrl}}/schools/{{schoolId}}/classes/{{classId}}
+Content-Type: application/json
+
+{
+  "className": "Grade 6",
+  "capacity": 45,
+  "level": "grade 6",
+  "stream": "A"
+}
+
+### ==========================================
+
+### DELETE CLASS
+
+### ==========================================
+
+### DELETE /schools/:schoolId/classes/:classId
+
+DELETE {{baseUrl}}/schools/{{schoolId}}/classes/{{classId}}

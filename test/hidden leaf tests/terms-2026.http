@@ -1,0 +1,62 @@
+@baseUrl = http://localhost:3000/api/v1/
+@schoolId = cb98d9d4-72d2-4723-b9c5-eaff89b30178
+@academicYearId = b8c34fe5-cc95-4b04-9a97-b6a857f7dbc7
+
+
+### ============================================
+### CREATE TERM 1
+### ============================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/terms
+Content-Type: application/json
+
+{
+  "academicYearId": "{{academicYearId}}",
+  "termName": "Term 1",
+  "startDate": "2026-01-05",
+  "endDate": "2026-04-02"
+}
+
+
+### ============================================
+### CREATE TERM 2
+### ============================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/terms
+Content-Type: application/json
+
+{
+  "academicYearId": "{{academicYearId}}",
+  "termName": "Term 2",
+  "startDate": "2026-05-04",
+  "endDate": "2026-07-31"
+}
+
+
+### ============================================
+### CREATE TERM 3
+### ============================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/terms
+Content-Type: application/json
+
+{
+  "academicYearId": "{{academicYearId}}",
+  "termName": "Term 3",
+  "startDate": "2026-09-01",
+  "endDate": "2026-12-04"
+}
+
+
+### ============================================
+### GET ALL TERMS FOR SCHOOL
+### ============================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/terms
+
+
+### ============================================
+### GET TERMS FOR ACADEMIC YEAR
+### ============================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/terms/academic-year/{{academicYearId}}

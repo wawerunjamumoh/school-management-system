@@ -20,4 +20,12 @@ export class CreateExamDto {
   @IsUUID()
   @IsNotEmpty()
   schoolId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  academicYearId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  termId: string;
 }

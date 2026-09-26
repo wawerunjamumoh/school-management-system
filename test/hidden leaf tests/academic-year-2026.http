@@ -1,0 +1,13 @@
+@baseUrl = http://localhost:3000/api/v1/
+@schoolId = cb98d9d4-72d2-4723-b9c5-eaff89b30178
+
+### Create Academic Year 2026
+
+POST {{baseUrl}}/schools/{{schoolId}}/academic-years
+Content-Type: application/json
+
+{
+  "name": "2026",
+  "startDate": "2026-01-05",
+  "endDate": "2026-12-04"
+}

@@ -6,14 +6,11 @@ export class CreateTermDto {
   termName: string;
 
   @IsDateString()
-  @IsNotEmpty()
   startDate: string;
 
   @IsDateString()
-  @IsNotEmpty()
   endDate: string;
 
   @IsUUID()
-  @IsNotEmpty()
   academicYearId: string;
 }

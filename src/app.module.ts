@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { createObserveModule } from '@nestjs/observe';
+import { ConfigModule } from '@nestjs/config';
 import {TypeOrmModule} from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
+
+// Modules
 import { AppService } from './app.service.js';
 import { StudentModule } from './modules/student/student.module.js';
 import { TeacherModule } from './modules/teacher/teacher.module.js';
-import { SchoolModule } from './modules/school/school.module.js';
 import { EventModule } from './modules/event/event.module.js';
 import { TeachingAssignmentModule } from './modules/teaching-assignment/teaching-assignment.module.js';
 import { ExamModule } from './modules/exam/exam.module.js';
@@ -18,21 +20,27 @@ import { EnrollmentModule } from './modules/enrollment/enrollment.module.js';
 import { NoticeBoardModule } from './modules/notice-board/notice-board.module.js';
 import { ClassModule } from './modules/class/class.module.js';
 import { ClassTeacherAssignmentModule } from './modules/class-teacher-assignment/class-teacher-assignment.module.js';
-// import {ConfigService} from '@nestjs/config'
 import { SubjectModule } from './modules/subject/subject.module.js';
 import { HeadTeacherAssignmentModule } from './modules/head-teacher-assignment/head-teacher-assignment.module.js';
+import { AuthModule } from './modules/auth/auth.module.js';
+import { SchoolMembershipModule } from './modules/school-membership/school-membership.module.js';
+import {SchoolModule} from './modules/school/school.module.js'
+
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     TypeOrmModule.forRoot({
       type: "mysql",
       // host: configService.get('HOST'),
-      host: "localhost",
-      port: 3306,
-      username: "nestjs",
-      password: "password",
-      database: "sms",
+      host: process.env.HOST,
+      port: parseInt(process.env.DB_PORT || '3306', 10), // Fixed: Converts string to a base-10 number,
+      username: process.env.USERNAME,
+      password: process.env.PASSWORD,
+      database: process.env.DATABASE,
       autoLoadEntities: true,
       synchronize: true,
     }),
@@ -60,6 +68,8 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     ClassTeacherAssignmentModule,
     SubjectModule,
     HeadTeacherAssignmentModule,
+    AuthModule,
+    SchoolMembershipModule,
   ],
   controllers: [AppController],
   providers: [AppService],

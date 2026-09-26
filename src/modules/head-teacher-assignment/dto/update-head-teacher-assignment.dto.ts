@@ -1,4 +1,16 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateHeadTeacherAssignmentDto } from './create-head-teacher-assignment.dto.js';
+import { IsDateString, IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
-export class UpdateHeadTeacherAssignmentDto extends PartialType(CreateHeadTeacherAssignmentDto) {}
+export class CreateTermDto {
+  @IsString()
+  @IsNotEmpty()
+  termName: string;
+
+  @IsDateString()
+  startDate: string;
+
+  @IsDateString()
+  endDate: string;
+
+  @IsUUID()
+  academicYearId: string;
+}

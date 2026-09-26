@@ -1,0 +1,121 @@
+### Guardian → Student relationships
+
+@baseUrl = http://localhost:3000/api/v1/
+
+### =========================================
+
+### GUARDIAN IDs
+
+### =========================================
+
+@kushinaId = da031792-be24-44de-b5cd-f2dd32f46409
+@fugakuId = dda22c4a-8a46-4da8-9925-165f6f65ad1a
+@mebukiId = f97af95b-ffe3-43da-8584-b27f815db3a6
+
+### =========================================
+
+### STUDENT IDs
+
+### =========================================
+
+@narutoId = 0ff28aff-bae2-45af-9405-951d3f11bb14
+@sakuraId = 34ad1f0d-1ce6-4700-a959-f5906166bab1
+@sasukeId = 362bc919-6b8a-4e57-9004-0c98078927e0
+
+### =========================================
+
+### 1. KUSHINA → NARUTO
+
+### =========================================
+
+POST {{baseUrl}}/guardian-students
+Content-Type: application/json
+
+{
+  "guardianId": "{{kushinaId}}",
+  "studentId": "{{narutoId}}"
+}
+
+### =========================================
+
+### 2. FUGAKU → SASUKE
+
+### =========================================
+
+POST {{baseUrl}}/guardian-students
+Content-Type: application/json
+
+{
+  "guardianId": "{{fugakuId}}",
+  "studentId": "{{sasukeId}}"
+}
+
+### =========================================
+
+### 3. MEBUKI → SAKURA
+
+### =========================================
+
+POST {{baseUrl}}/guardian-students
+Content-Type: application/json
+
+{
+  "guardianId": "{{mebukiId}}",
+  "studentId": "{{sakuraId}}"
+}
+
+### =========================================
+
+### GET ALL RELATIONSHIPS
+
+### =========================================
+
+GET {{baseUrl}}/guardian-students
+
+### =========================================
+
+### KUSHINA → STUDENTS
+
+### =========================================
+
+GET {{baseUrl}}/guardian-students/guardian/{{kushinaId}}/students
+
+### =========================================
+
+### FUGAKU → STUDENTS
+
+### =========================================
+
+GET {{baseUrl}}/guardian-students/guardian/{{fugakuId}}/students
+
+### =========================================
+
+### MEBUKI → STUDENTS
+
+### =========================================
+
+GET {{baseUrl}}/guardian-students/guardian/{{mebukiId}}/students
+
+### =========================================
+
+### NARUTO → GUARDIANS
+
+### =========================================
+
+GET {{baseUrl}}/guardian-students/student/{{narutoId}}/guardians
+
+### =========================================
+
+### SASUKE → GUARDIANS
+
+### =========================================
+
+GET {{baseUrl}}/guardian-students/student/{{sasukeId}}/guardians
+
+### =========================================
+
+### SAKURA → GUARDIANS
+
+### =========================================
+
+GET {{baseUrl}}/guardian-students/student/{{sakuraId}}/guardians

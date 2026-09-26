@@ -1,34 +1,77 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+
 import { ClassTeacherAssignmentService } from './class-teacher-assignment.service.js';
 import { CreateClassTeacherAssignmentDto } from './dto/create-class-teacher-assignment.dto.js';
-import { UpdateClassTeacherAssignmentDto } from './dto/update-class-teacher-assignment.dto.js';
 
-@Controller('class-teacher-assignment')
+@Controller('schools/:schoolId/class-teacher-assignments')
 export class ClassTeacherAssignmentController {
-  constructor(private readonly classTeacherAssignmentService: ClassTeacherAssignmentService) {}
+  constructor(
+    private readonly classTeacherAssignmentService: ClassTeacherAssignmentService,
+  ) {}
 
+  // Assign a teacher as class teacher
   @Post()
-  create(@Body() createClassTeacherAssignmentDto: CreateClassTeacherAssignmentDto) {
-    return this.classTeacherAssignmentService.create(createClassTeacherAssignmentDto);
+  async create(
+    @Param('schoolId') schoolId: string,
+    @Body() dto: CreateClassTeacherAssignmentDto,
+  ) {
+    return this.classTeacherAssignmentService.create(schoolId, dto);
   }
 
+  // Get all class-teacher assignments in a school
   @Get()
-  findAll() {
-    return this.classTeacherAssignmentService.findAll();
+  async findAll(@Param('schoolId') schoolId: string) {
+    return this.classTeacherAssignmentService.findAll(schoolId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.classTeacherAssignmentService.findOne(+id);
+  // Get assignments for a specific teacher
+  @Get('teacher/:teacherId')
+  async findByTeacher(
+    @Param('schoolId') schoolId: string,
+    @Param('teacherId') teacherId: string,
+  ) {
+    return this.classTeacherAssignmentService.findByTeacher(
+      schoolId,
+      teacherId,
+    );
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateClassTeacherAssignmentDto: UpdateClassTeacherAssignmentDto) {
-    return this.classTeacherAssignmentService.update(+id, updateClassTeacherAssignmentDto);
+  // Get the class teacher for a specific class
+  @Get('class/:classId')
+  async findByClass(
+    @Param('schoolId') schoolId: string,
+    @Param('classId') classId: string,
+  ) {
+    return this.classTeacherAssignmentService.findByClass(schoolId, classId);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.classTeacherAssignmentService.remove(+id);
+  // Get all class-teacher assignments for an academic year
+  @Get('academic-year/:academicYearId')
+  async findByAcademicYear(
+    @Param('schoolId') schoolId: string,
+    @Param('academicYearId') academicYearId: string,
+  ) {
+    return this.classTeacherAssignmentService.findByAcademicYear(
+      schoolId,
+      academicYearId,
+    );
+  }
+
+  // Get one assignment
+  @Get(':assignmentId')
+  async findOne(
+    @Param('schoolId') schoolId: string,
+    @Param('assignmentId') assignmentId: string,
+  ) {
+    return this.classTeacherAssignmentService.findOne(schoolId, assignmentId);
+  }
+
+  // Remove a class-teacher assignment
+  @Delete(':assignmentId')
+  async remove(
+    @Param('schoolId') schoolId: string,
+    @Param('assignmentId') assignmentId: string,
+  ) {
+    return this.classTeacherAssignmentService.remove(schoolId, assignmentId);
   }
 }

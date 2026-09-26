@@ -7,47 +7,101 @@ import {
   Unique,
 } from 'typeorm';
 
-import {Teacher} from '../../teacher/entities/teacher.entity.js'
-import {Subject} from '../../subject/entities/subject.entity.js'
-import {Class} from '../../class/entities/class.entity.js'
-import {AcademicYear} from '../../academic-year/entities/academic-year.entity.js';
-@Entity('teaching-assignment')
-// Prevent assigning two diffrent teachers to the same subject in the same
-// class during the same year
-@Unique(['classId', 'subjectId', 'academicYearId'])
+import { Teacher } from '../../teacher/entities/teacher.entity.js';
+import { Class } from '../../class/entities/class.entity.js';
+import { Subject } from '../../subject/entities/subject.entity.js';
+import { AcademicYear } from '../../academic-year/entities/academic-year.entity.js';
+import { School } from '../../school/entities/school.entity.js';
+
+@Entity('teaching_assignment')
+@Unique([
+  'schoolId',
+  'classId',
+  'subjectId',
+  'academicYearId',
+])
 export class TeachingAssignment {
+
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  //   Teacher relationship
-  @ManyToOne(() => Teacher, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'teacherId' })
+  // Teacher
+  @ManyToOne(() => Teacher, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({
+    name: 'teacherId',
+    referencedColumnName: 'id',
+  })
   teacher: Teacher;
 
-  @Column()
+  @Column({
+    type: 'char',
+    length: 36,
+  })
   teacherId: string;
 
-  //   class relationship
-  @ManyToOne(() => Class, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'classId' })
+  // Class
+  @ManyToOne(() => Class, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({
+    name: 'classId',
+    referencedColumnName: 'id',
+  })
   class: Class;
 
-  @Column()
+  @Column({
+    type: 'char',
+    length: 36,
+  })
   classId: string;
 
-  //   Subject relationship
-  @ManyToOne(() => Subject, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'subjectId' })
+  // Subject
+  @ManyToOne(() => Subject, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({
+    name: 'subjectId',
+    referencedColumnName: 'id',
+  })
   subject: Subject;
 
-  @Column()
+  @Column({
+    type: 'char',
+    length: 36,
+  })
   subjectId: string;
 
-  //  academic  relationship
-  @ManyToOne(() => AcademicYear, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'academicYearId' })
+  // Academic Year
+  @ManyToOne(() => AcademicYear, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({
+    name: 'academicYearId',
+    referencedColumnName: 'id',
+  })
   academicYear: AcademicYear;
 
-  @Column()
+  @Column({
+    type: 'char',
+    length: 36,
+  })
   academicYearId: string;
+
+  // School
+  @ManyToOne(() => School, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({
+    name: 'schoolId',
+    referencedColumnName: 'id',
+  })
+  school: School;
+
+  @Column({
+    type: 'char',
+    length: 36,
+  })
+  schoolId: string;
 }

@@ -1,0 +1,135 @@
+@baseUrl = http://localhost:3000/api/v1/
+
+### =========================================
+
+### HIDDEN LEAF ACADEMY
+
+### =========================================
+
+@schoolId = cb98d9d4-72d2-4723-b9c5-eaff89b30178
+
+### =========================================
+
+### TEACHERS
+
+### =========================================
+
+@irukaId = 9d1968ba-2760-4059-a851-eac582ef9f31
+@asumaId = c1bf90d1-990e-456c-87ce-beb06eed98aa
+@kakashiId = e1913442-cd55-4535-8f12-db047cc60b3b
+
+### =========================================
+
+### ACADEMIC YEAR
+
+### =========================================
+
+@academicYearId = b8c34fe5-cc95-4b04-9a97-b6a857f7dbc7
+
+### =========================================
+
+### ASSIGNMENT ID
+
+### =========================================
+
+@assignmentId = YOUR-ASSIGNMENT-UUID
+
+### =====================================================
+
+### ASSIGN KAKASHI AS HEADTEACHER — 2026
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/head-teacher-assignments
+Content-Type: application/json
+
+{
+  "teacherId": "{{kakashiId}}",
+  "academicYearId": "{{academicYearId}}"
+}
+
+### =====================================================
+
+### GET ALL HEADTEACHER ASSIGNMENTS
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/head-teacher-assignments
+
+### =====================================================
+
+### GET HEADTEACHER FOR 2026
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/head-teacher-assignments/academic-year/{{academicYearId}}
+
+### =====================================================
+
+### GET ONE ASSIGNMENT
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/head-teacher-assignments/{{assignmentId}}
+
+### =====================================================
+
+### DELETE ASSIGNMENT
+
+### =====================================================
+
+DELETE {{baseUrl}}/schools/{{schoolId}}/head-teacher-assignments/{{assignmentId}}
+
+### =====================================================
+
+### VALIDATION — MISSING TEACHER
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/head-teacher-assignments
+Content-Type: application/json
+
+{
+  "academicYearId": "{{academicYearId}}"
+}
+
+### =====================================================
+
+### VALIDATION — MISSING ACADEMIC YEAR
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/head-teacher-assignments
+Content-Type: application/json
+
+{
+  "teacherId": "{{kakashiId}}"
+}
+
+### =====================================================
+
+### VALIDATION — INVALID TEACHER UUID
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/head-teacher-assignments
+Content-Type: application/json
+
+{
+  "teacherId": "not-a-uuid",
+  "academicYearId": "{{academicYearId}}"
+}
+
+### =====================================================
+
+### VALIDATION — INVALID ACADEMIC YEAR UUID
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/head-teacher-assignments
+Content-Type: application/json
+
+{
+  "teacherId": "{{kakashiId}}",
+  "academicYearId": "not-a-uuid"
+}

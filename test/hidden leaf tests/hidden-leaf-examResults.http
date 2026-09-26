@@ -1,0 +1,365 @@
+
+@baseUrl = http://localhost:3000/api/v1/
+
+@schoolId = cb98d9d4-72d2-4723-b9c5-eaff89b30178
+@academicYearId = b8c34fe5-cc95-4b04-9a97-b6a857f7dbc7
+@termId = 3c11cfbd-5bf7-41e8-ad6d-eb6ca85892aa
+
+@examId = 141b772e-5ac6-428d-8908-2646c2000a32
+
+# Students
+@narutoId = 0ff28aff-bae2-45af-9405-951d3f11bb14
+@sakuraId = 34ad1f0d-1ce6-4700-a959-f5906166bab1
+@sasukeId = 362bc919-6b8a-4e57-9004-0c98078927e0
+
+# Replace these with your actual Subject UUIDs
+@mathSubjectId = 4540233d-00f4-4908-9dbc-8cffd1a7ba47
+@englishSubjectId = e65bb901-e11e-4fdd-bed8-63a614d83d6c
+@scienceSubjectId = 496ffb78-2722-49b4-87ba-6576a1474936
+
+# Replace after creating a result
+@examResultId = YOUR-EXAM-RESULT-UUID
+
+
+###########################################################
+# CREATE RESULTS
+###########################################################
+
+### Naruto - Mathematics
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{narutoId}}",
+  "subjectId": "{{mathSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": 72
+}
+
+
+### Naruto - English
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{narutoId}}",
+  "subjectId": "{{englishSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": 64
+}
+
+
+### Naruto - Science
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{narutoId}}",
+  "subjectId": "{{scienceSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": 58
+}
+
+
+### Sakura - Mathematics
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{sakuraId}}",
+  "subjectId": "{{mathSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": 91
+}
+
+
+### Sakura - English
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{sakuraId}}",
+  "subjectId": "{{englishSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": 88
+}
+
+
+### Sakura - Science
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{sakuraId}}",
+  "subjectId": "{{scienceSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": 94
+}
+
+
+### Sasuke - Mathematics
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{sasukeId}}",
+  "subjectId": "{{mathSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": 96
+}
+
+
+### Sasuke - English
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{sasukeId}}",
+  "subjectId": "{{englishSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": 82
+}
+
+
+### Sasuke - Science
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{sasukeId}}",
+  "subjectId": "{{scienceSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": 89
+}
+
+
+###########################################################
+# READ - ALL SCHOOL RESULTS
+###########################################################
+
+### Get All Results For School
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results
+
+
+###########################################################
+# READ - SUBJECT
+###########################################################
+
+### Get Mathematics Results
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results/subject/{{mathSubjectId}}
+
+
+### Get English Results
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results/subject/{{englishSubjectId}}
+
+
+###########################################################
+# READ - STUDENT + EXAM
+###########################################################
+
+### Naruto - Term 1 Opener Results
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results/student/{{narutoId}}/exam/{{examId}}
+
+
+### Sakura - Term 1 Opener Results
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results/student/{{sakuraId}}/exam/{{examId}}
+
+
+### Sasuke - Term 1 Opener Results
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results/student/{{sasukeId}}/exam/{{examId}}
+
+
+###########################################################
+# READ - CLASS + EXAM
+###########################################################
+
+# Grade 6 A
+@class6AId = 4db0e58e-b36c-4312-ad2b-c69fc8b308aa
+
+### Grade 6 A - Term 1 Opener
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results/class/{{class6AId}}/exam/{{examId}}
+
+
+# Grade 6 B
+@class6BId = 10cb48d2-281d-4fbc-9ca1-bbfa7342f2fd
+
+### Grade 6 B - Term 1 Opener
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results/class/{{class6BId}}/exam/{{examId}}
+
+
+###########################################################
+# READ - CLASS + SUBJECT
+###########################################################
+
+### Grade 6 A - Mathematics
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results/class/{{class6AId}}/subject/{{mathSubjectId}}
+
+
+### Grade 6 A - English
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results/class/{{class6AId}}/subject/{{englishSubjectId}}
+
+
+###########################################################
+# READ - STUDENT + TERM
+###########################################################
+
+### Naruto - Term 1 Results
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results/student/{{narutoId}}/term/{{termId}}
+
+
+### Sakura - Term 1 Results
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results/student/{{sakuraId}}/term/{{termId}}
+
+
+### Sasuke - Term 1 Results
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results/student/{{sasukeId}}/term/{{termId}}
+
+
+###########################################################
+# READ - ONE RESULT
+###########################################################
+
+### Get One Exam Result
+GET {{baseUrl}}/schools/{{schoolId}}/exam-results/{{examResultId}}
+
+
+###########################################################
+# UPDATE
+###########################################################
+
+### Update Score
+PATCH {{baseUrl}}/schools/{{schoolId}}/exam-results/{{examResultId}}
+Content-Type: application/json
+
+{
+  "score": 78
+}
+
+
+### Update Subject
+PATCH {{baseUrl}}/schools/{{schoolId}}/exam-results/{{examResultId}}
+Content-Type: application/json
+
+{
+  "subjectId": "{{scienceSubjectId}}"
+}
+
+
+### Update Multiple Fields
+PATCH {{baseUrl}}/schools/{{schoolId}}/exam-results/{{examResultId}}
+Content-Type: application/json
+
+{
+  "subjectId": "{{mathSubjectId}}",
+  "score": 85
+}
+
+
+###########################################################
+# DELETE
+###########################################################
+
+### Delete Exam Result
+DELETE {{baseUrl}}/schools/{{schoolId}}/exam-results/{{examResultId}}
+
+
+###########################################################
+# VALIDATION TESTS
+###########################################################
+
+### Missing Student ID
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "subjectId": "{{mathSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": 70
+}
+
+
+### Invalid Student ID
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "not-a-uuid",
+  "subjectId": "{{mathSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": 70
+}
+
+
+### Missing Subject ID
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{narutoId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": 70
+}
+
+
+### Invalid Exam ID
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{narutoId}}",
+  "subjectId": "{{mathSubjectId}}",
+  "examId": "not-a-uuid",
+  "termId": "{{termId}}",
+  "score": 70
+}
+
+
+### Score Below Minimum
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{narutoId}}",
+  "subjectId": "{{mathSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": -1
+}
+
+
+### Score Above Maximum
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{narutoId}}",
+  "subjectId": "{{mathSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}",
+  "score": 101
+}
+
+
+### Missing Score
+POST {{baseUrl}}/schools/{{schoolId}}/exam-results
+Content-Type: application/json
+
+{
+  "studentId": "{{narutoId}}",
+  "subjectId": "{{mathSubjectId}}",
+  "examId": "{{examId}}",
+  "termId": "{{termId}}"
+}
+

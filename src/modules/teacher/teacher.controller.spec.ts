@@ -17,4 +17,8 @@ describe('TeacherController', () => {
   it('should be defined', () => {
     expect(controller).toBeDefined();
   });
+
+    it('should call updateSubjects', () => {
+        expect(controller.updateSubjects).toBeDefined();
+    });
 });

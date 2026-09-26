@@ -1,0 +1,228 @@
+@baseUrl = http://localhost:3000/api/v1/
+
+### =========================================
+
+### HIDDEN LEAF ACADEMY
+
+### =========================================
+
+@schoolId = cb98d9d4-72d2-4723-b9c5-eaff89b30178
+
+### =========================================
+
+### ACADEMIC YEAR
+
+### =========================================
+
+@academicYearId = b8c34fe5-cc95-4b04-9a97-b6a857f7dbc7
+
+### =========================================
+
+### TERM
+
+### =========================================
+
+@termId = 2a4f89ed-65c3-4a88-ba6f-49e4f4d72f9a
+
+### =========================================
+
+### EVENT ID
+
+### =========================================
+
+@eventId = YOUR-EVENT-UUID
+
+### =====================================================
+
+### CREATE — SCHOOL OPENING DAY
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/events
+Content-Type: application/json
+
+{
+  "eventName": "School Opening Day",
+  "description": "Opening of the 2026 academic term.",
+  "startsAt": "2026-09-28T08:00:00+03:00",
+  "endsAt": "2026-09-28T16:00:00+03:00",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termId}}",
+  "createdBy": "HeadTeacher"
+}
+
+### =====================================================
+
+### CREATE — PARENTS DAY
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/events
+Content-Type: application/json
+
+{
+  "eventName": "Parents Day",
+  "description": "Parents meet teachers to discuss student progress.",
+  "startsAt": "2026-10-17T09:00:00+03:00",
+  "endsAt": "2026-10-17T15:00:00+03:00",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termId}}",
+  "createdBy": "HeadTeacher"
+}
+
+### =====================================================
+
+### CREATE — SPORTS DAY
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/events
+Content-Type: application/json
+
+{
+  "eventName": "School Sports Day",
+  "description": "Annual inter-class athletics and sports competitions.",
+  "startsAt": "2026-11-06T08:00:00+03:00",
+  "endsAt": "2026-11-06T16:00:00+03:00",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termId}}",
+  "createdBy": "HeadTeacher"
+}
+
+### =====================================================
+
+### GET ALL EVENTS
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/events
+
+### =====================================================
+
+### GET EVENTS FOR 2026
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/events/academic-year/{{academicYearId}}
+
+### =====================================================
+
+### GET EVENTS FOR 2026 + TERM
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/events/academic-year/{{academicYearId}}/term/{{termId}}
+
+### =====================================================
+
+### GET ONE EVENT
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/events/{{eventId}}
+
+### =====================================================
+
+### UPDATE EVENT
+
+### =====================================================
+
+PATCH {{baseUrl}}/schools/{{schoolId}}/events/{{eventId}}
+Content-Type: application/json
+
+{
+  "eventName": "Parents and Guardians Day",
+  "description": "Parents and guardians meet teachers to discuss student progress."
+}
+
+### =====================================================
+
+### UPDATE EVENT DATE
+
+### =====================================================
+
+PATCH {{baseUrl}}/schools/{{schoolId}}/events/{{eventId}}
+Content-Type: application/json
+
+{
+  "startsAt": "2026-10-24T09:00:00+03:00",
+  "endsAt": "2026-10-24T15:00:00+03:00"
+}
+
+### =====================================================
+
+### DELETE EVENT
+
+### =====================================================
+
+DELETE {{baseUrl}}/schools/{{schoolId}}/events/{{eventId}}
+
+### =====================================================
+
+### VALIDATION — MISSING EVENT NAME
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/events
+Content-Type: application/json
+
+{
+  "description": "Event without a name.",
+  "startsAt": "2026-10-20T09:00:00+03:00",
+  "endsAt": "2026-10-20T15:00:00+03:00",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termId}}"
+}
+
+### =====================================================
+
+### VALIDATION — INVALID START DATE
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/events
+Content-Type: application/json
+
+{
+  "eventName": "Invalid Event",
+  "description": "Testing date validation.",
+  "startsAt": "not-a-date",
+  "endsAt": "2026-10-20T15:00:00+03:00",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termId}}"
+}
+
+### =====================================================
+
+### VALIDATION — MISSING ACADEMIC YEAR
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/events
+Content-Type: application/json
+
+{
+  "eventName": "Missing Academic Year",
+  "description": "Testing required fields.",
+  "startsAt": "2026-10-20T09:00:00+03:00",
+  "endsAt": "2026-10-20T15:00:00+03:00",
+  "termId": "{{termId}}"
+}
+
+### =====================================================
+
+### VALIDATION — INVALID TERM UUID
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/events
+Content-Type: application/json
+
+{
+  "eventName": "Invalid Term",
+  "description": "Testing UUID validation.",
+  "startsAt": "2026-10-20T09:00:00+03:00",
+  "endsAt": "2026-10-20T15:00:00+03:00",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "not-a-uuid"
+}

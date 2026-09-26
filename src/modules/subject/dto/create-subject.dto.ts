@@ -1,23 +1,17 @@
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 export class CreateSubjectDto {
   @IsString()
   @IsNotEmpty()
-  subject_id: string;
+  @MaxLength(20)
+  subjectId: string;
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   name: string;
 
   @IsString()
   @IsNotEmpty()
   description: string;
-
-  @IsUUID()
-  @IsNotEmpty()
-  tremId: string;
-
-  @IsUUID()
-  @IsNotEmpty()
-  schoolId: string;
 }

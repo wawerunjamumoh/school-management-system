@@ -1,34 +1,53 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
+
 import { SubjectService } from './subject.service.js';
 import { CreateSubjectDto } from './dto/create-subject.dto.js';
 import { UpdateSubjectDto } from './dto/update-subject.dto.js';
 
-@Controller('subject')
+@Controller('schools/:schoolId/subjects')
 export class SubjectController {
   constructor(private readonly subjectService: SubjectService) {}
 
   @Post()
-  create(@Body() createSubjectDto: CreateSubjectDto) {
-    return this.subjectService.create(createSubjectDto);
+  create(@Param('schoolId') schoolId: string, @Body() dto: CreateSubjectDto) {
+    return this.subjectService.create(schoolId, dto);
   }
 
   @Get()
-  findAll() {
-    return this.subjectService.findAll();
+  findAll(@Param('schoolId') schoolId: string) {
+    return this.subjectService.findAll(schoolId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.subjectService.findOne(+id);
+  @Get(':subjectId')
+  findOne(
+    @Param('schoolId') schoolId: string,
+    @Param('subjectId') subjectId: string,
+  ) {
+    return this.subjectService.findOne(schoolId, subjectId);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateSubjectDto: UpdateSubjectDto) {
-    return this.subjectService.update(+id, updateSubjectDto);
+  @Patch(':subjectId')
+  update(
+    @Param('schoolId') schoolId: string,
+    @Param('subjectId') subjectId: string,
+    @Body() dto: UpdateSubjectDto,
+  ) {
+    return this.subjectService.update(schoolId, subjectId, dto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.subjectService.remove(+id);
+  @Delete(':subjectId')
+  remove(
+    @Param('schoolId') schoolId: string,
+    @Param('subjectId') subjectId: string,
+  ) {
+    return this.subjectService.remove(schoolId, subjectId);
   }
 }

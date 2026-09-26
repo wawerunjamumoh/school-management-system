@@ -1,0 +1,219 @@
+
+@baseUrl = http://localhost:3000/api/v1/
+
+@schoolId = cb98d9d4-72d2-4723-b9c5-eaff89b30178
+@academicYearId = b8c34fe5-cc95-4b04-9a97-b6a857f7dbc7
+@termOneId = 3c11cfbd-5bf7-41e8-ad6d-eb6ca85892aa
+@termTwoId = 704adcab-5aab-4628-8e1a-addf7b0a0aff
+@termThreeId = 2a4f89ed-65c3-4a88-ba6f-49e4f4d72f9a
+
+@examId = YOUR-EXAM-UUID
+
+
+###########################################################
+# CREATE
+###########################################################
+
+### Create Mid-Term Examination
+POST {{baseUrl}}/schools/{{schoolId}}/exams
+Content-Type: application/json
+
+{
+  "examName": "Term 1 opener Examination",
+  "startDate": "2026-01-16",
+  "endDate": "2026-01-20",
+  "schoolId": "{{schoolId}}",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termOneId}}",
+  "examId": "opener"
+}
+
+
+### Create End-Term Examination
+POST {{baseUrl}}/schools/{{schoolId}}/exams
+Content-Type: application/json
+
+{
+  "examName": "Term 1 End-Term Examination",
+  "startDate": "2026-03-20",
+  "endDate": "2026-04-01",
+  "schoolId": "{{schoolId}}",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termOneId}}",
+  "examId": "endterm"
+}
+
+
+### Create Mock Examination
+POST {{baseUrl}}/schools/{{schoolId}}/exams
+Content-Type: application/json
+
+{
+  "examName": "Grade 7 Mock Examination",
+  "startDate": "2026-05-07",
+  "endDate": "2026-05-11",
+  "schoolId": "{{schoolId}}",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termTwoId}}",
+  "examId": "Mock"
+}
+
+
+###########################################################
+# READ - ALL SCHOOL EXAMS
+###########################################################
+
+### Get All Exams For School
+GET {{baseUrl}}/schools/{{schoolId}}/exams
+
+
+###########################################################
+# READ - ACADEMIC YEAR
+###########################################################
+
+### Get Exams For Academic Year
+GET {{baseUrl}}/schools/{{schoolId}}/exams/academic-year/{{academicYearId}}
+
+
+###########################################################
+# READ - ACADEMIC YEAR + TERM
+###########################################################
+
+### Get Exams For Academic Year And Term
+GET {{baseUrl}}/schools/{{schoolId}}/exams/academic-year/{{academicYearId}}/term/{{termId}}
+
+
+###########################################################
+# READ - ONE
+###########################################################
+
+### Get One Exam
+GET {{baseUrl}}/schools/{{schoolId}}/exams/{{examId}}
+
+
+###########################################################
+# UPDATE
+###########################################################
+
+### Update Exam Name
+PATCH {{baseUrl}}/schools/{{schoolId}}/exams/{{examId}}
+Content-Type: application/json
+
+{
+  "examName": "Term 1 Mid-Term Assessment"
+}
+
+
+### Update Exam Dates
+PATCH {{baseUrl}}/schools/{{schoolId}}/exams/{{examId}}
+Content-Type: application/json
+
+{
+  "startDate": "2026-03-17",
+  "endDate": "2026-03-21"
+}
+
+
+### Update Academic Year / Term
+PATCH {{baseUrl}}/schools/{{schoolId}}/exams/{{examId}}
+Content-Type: application/json
+
+{
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termId}}"
+}
+
+
+###########################################################
+# DELETE
+###########################################################
+
+### Delete Exam
+DELETE {{baseUrl}}/schools/{{schoolId}}/exams/{{examId}}
+
+
+###########################################################
+# VALIDATION TESTS
+###########################################################
+
+### Missing Exam Name
+POST {{baseUrl}}/schools/{{schoolId}}/exams
+Content-Type: application/json
+
+{
+  "startDate": "2026-03-16",
+  "endDate": "2026-03-20",
+  "schoolId": "{{schoolId}}",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termId}}"
+}
+
+
+### Invalid Start Date
+POST {{baseUrl}}/schools/{{schoolId}}/exams
+Content-Type: application/json
+
+{
+  "examName": "Invalid Exam",
+  "startDate": "not-a-date",
+  "endDate": "2026-03-20",
+  "schoolId": "{{schoolId}}",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termId}}"
+}
+
+
+### Missing End Date
+POST {{baseUrl}}/schools/{{schoolId}}/exams
+Content-Type: application/json
+
+{
+  "examName": "Invalid Exam",
+  "startDate": "2026-03-16",
+  "schoolId": "{{schoolId}}",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termId}}"
+}
+
+
+### Invalid Academic Year ID
+POST {{baseUrl}}/schools/{{schoolId}}/exams
+Content-Type: application/json
+
+{
+  "examName": "Invalid Academic Year Exam",
+  "startDate": "2026-03-16",
+  "endDate": "2026-03-20",
+  "schoolId": "{{schoolId}}",
+  "academicYearId": "not-a-uuid",
+  "termId": "{{termId}}"
+}
+
+
+### Invalid Term ID
+POST {{baseUrl}}/schools/{{schoolId}}/exams
+Content-Type: application/json
+
+{
+  "examName": "Invalid Term Exam",
+  "startDate": "2026-03-16",
+  "endDate": "2026-03-20",
+  "schoolId": "{{schoolId}}",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "not-a-uuid"
+}
+
+
+### Invalid School ID In Body
+POST {{baseUrl}}/schools/{{schoolId}}/exams
+Content-Type: application/json
+
+{
+  "examName": "Wrong School Exam",
+  "startDate": "2026-03-16",
+  "endDate": "2026-03-20",
+  "schoolId": "not-a-uuid",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termId}}"
+}
+

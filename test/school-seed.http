@@ -1,0 +1,89 @@
+@baseUrl = http://localhost:3000/api/v1
+
+### Hidden Leaf
+POST {{baseUrl}}/schools
+Content-Type: application/json
+
+{
+  "schoolName": "Hidden Leaf Academy",
+  "location": "Nairobi",
+  "schoolPhone": "0200 111 001",
+  "schoolEmail": "leaf@academy.test"
+}
+
+### Hidden Sand
+POST {{baseUrl}}/schools
+Content-Type: application/json
+
+{
+  "schoolName": "Hidden Sand Academy",
+  "location": "Garissa",
+  "schoolPhone": "0200 111 002",
+  "schoolEmail": "sand@academy.test"
+}
+
+### Hidden Mist
+POST {{baseUrl}}/schools
+Content-Type: application/json
+
+{
+  "schoolName": "Hidden Mist Academy",
+  "location": "Mombasa",
+  "schoolPhone": "0200 111 003",
+  "schoolEmail": "mist@academy.test"
+}
+
+### Hidden Stone
+POST {{baseUrl}}/schools
+Content-Type: application/json
+
+{
+  "schoolName": "Hidden Stone Academy",
+  "location": "Kisumu",
+  "schoolPhone": "0200 111 004",
+  "schoolEmail": "stone@academy.test"
+}
+
+### Hidden Cloud
+POST {{baseUrl}}/schools
+Content-Type: application/json
+
+{
+  "schoolName": "Hidden Cloud Academy",
+  "location": "Nakuru",
+  "schoolPhone": "0200 111 005",
+  "schoolEmail": "cloud@academy.test"
+}
+
+### Hidden Rain
+POST {{baseUrl}}/schools
+Content-Type: application/json
+
+{
+  "schoolName": "Hidden Rain Academy",
+  "location": "Eldoret",
+  "schoolPhone": "0200 111 006",
+  "schoolEmail": "rain@academy.test"
+}
+
+### Hidden Grass
+POST {{baseUrl}}/schools
+Content-Type: application/json
+
+{
+  "schoolName": "Hidden Grass Academy",
+  "location": "Kakamega",
+  "schoolPhone": "0200 111 007",
+  "schoolEmail": "grass@academy.test"
+}
+
+### Hidden Sound
+POST {{baseUrl}}/schools
+Content-Type: application/json
+
+{
+  "schoolName": "Hidden Sound Academy",
+  "location": "Kiambu",
+  "schoolPhone": "0200 111 008",
+  "schoolEmail": "sound@academy.test"
+}

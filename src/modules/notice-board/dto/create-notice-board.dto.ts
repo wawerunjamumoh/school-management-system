@@ -1,23 +1,25 @@
-import { IsDateString, IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import {
+  IsDateString,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateNoticeBoardDto {
   @IsString()
   @IsNotEmpty()
   title: string;
 
-  @IsDateString()
-  @IsNotEmpty()
-  publishedAt: string;
-
-  @IsDateString()
-  @IsNotEmpty()
-  expiresAt: string;
-
   @IsString()
   @IsNotEmpty()
-  createdBy: string;
+  content: string;
 
+  @IsOptional()
+  @IsDateString()
+  expiresAt?: string;
+
+  @IsOptional()
   @IsUUID()
-  @IsNotEmpty()
-  schoolId: string;
+  termId?: string;
 }

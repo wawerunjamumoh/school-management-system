@@ -1,34 +1,105 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+
 import { EventService } from './event.service.js';
 import { CreateEventDto } from './dto/create-event.dto.js';
 import { UpdateEventDto } from './dto/update-event.dto.js';
 
-@Controller('event')
+@Controller('schools/:schoolId/events')
 export class EventController {
   constructor(private readonly eventService: EventService) {}
 
+  // ==========================================
+  // CREATE EVENT
+  // ==========================================
+
   @Post()
-  create(@Body() createEventDto: CreateEventDto) {
-    return this.eventService.create(createEventDto);
+  async createEvent(
+    @Param('schoolId') schoolId: string,
+    @Body() dto: CreateEventDto,
+  ) {
+    return this.eventService.create(schoolId, dto);
   }
+
+  // ==========================================
+  // GET ALL EVENTS
+  // ==========================================
 
   @Get()
-  findAll() {
-    return this.eventService.findAll();
+  async findAllEvents(@Param('schoolId') schoolId: string) {
+    return this.eventService.findAll(schoolId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.eventService.findOne(+id);
+  // ==========================================
+  // GET EVENTS BY ACADEMIC YEAR
+  // ==========================================
+
+  @Get('academic-year/:academicYearId')
+  async getSchoolEventsForYear(
+    @Param('schoolId') schoolId: string,
+    @Param('academicYearId') academicYearId: string,
+  ) {
+    return this.eventService.findByAcademicYear(schoolId, academicYearId);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto) {
-    return this.eventService.update(+id, updateEventDto);
+  // ==========================================
+  // GET EVENTS BY ACADEMIC YEAR + TERM
+  // ==========================================
+
+  @Get('academic-year/:academicYearId/term/:termId')
+  async getSchoolEventsForYearAndTerm(
+    @Param('schoolId') schoolId: string,
+    @Param('academicYearId') academicYearId: string,
+    @Param('termId') termId: string,
+  ) {
+    return this.eventService.findByAcademicYearAndTerm(
+      schoolId,
+      academicYearId,
+      termId,
+    );
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.eventService.remove(+id);
+  // ==========================================
+  // GET ONE EVENT
+  // ==========================================
+
+  @Get(':eventId')
+  async findOne(
+    @Param('schoolId') schoolId: string,
+    @Param('eventId') eventId: string,
+  ) {
+    return this.eventService.findOne(schoolId, eventId);
+  }
+
+  // ==========================================
+  // UPDATE
+  // ==========================================
+
+  @Patch(':eventId')
+  async update(
+    @Param('schoolId') schoolId: string,
+    @Param('eventId') eventId: string,
+    @Body() dto: UpdateEventDto,
+  ) {
+    return this.eventService.update(schoolId, eventId, dto);
+  }
+
+  // ==========================================
+  // DELETE
+  // ==========================================
+
+  @Delete(':eventId')
+  async remove(
+    @Param('schoolId') schoolId: string,
+    @Param('eventId') eventId: string,
+  ) {
+    return this.eventService.remove(schoolId, eventId);
   }
 }

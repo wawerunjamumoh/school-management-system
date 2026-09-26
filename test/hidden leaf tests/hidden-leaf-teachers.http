@@ -1,0 +1,50 @@
+@baseUrl = http://localhost:3000/api/v1/
+@schoolId = cb98d9d4-72d2-4723-b9c5-eaff89b30178
+
+### ==========================================
+### TEACHER 1 - Kakashi
+### ==========================================
+
+POST {{baseUrl}}/auth/register/teacher
+Content-Type: application/json
+
+{
+  "firstName": "Kakashi",
+  "lastName": "Hatake",
+  "email": "kakashi@leaf.test",
+  "phone": "0711000001",
+  "schoolId": "{{schoolId}}",
+  "password": "Password123!"
+}
+
+### ==========================================
+### TEACHER 2 - Iruka
+### ==========================================
+
+POST {{baseUrl}}/auth/register/teacher
+Content-Type: application/json
+
+{
+  "firstName": "Iruka",
+  "lastName": "Umino",
+  "email": "iruka@leaf.test",
+  "phone": "0711000002",
+  "schoolId": "{{schoolId}}",
+  "password": "Password123!"
+}
+
+### ==========================================
+### TEACHER 3 - Asuma
+### ==========================================
+
+POST {{baseUrl}}/auth/register/teacher
+Content-Type: application/json
+
+{
+  "firstName": "Asuma",
+  "lastName": "Sarutobi",
+  "email": "asuma@leaf.test",
+  "phone": "0711000003",
+  "schoolId": "{{schoolId}}",
+  "password": "Password123!"
+}

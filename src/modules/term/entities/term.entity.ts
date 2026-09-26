@@ -2,30 +2,34 @@ import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
-  CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 
-import {AcademicYear} from '../../academic-year/entities/academic-year.entity.js';
+import { AcademicYear } from '../../academic-year/entities/academic-year.entity.js';
 
 @Entity('term')
+@Unique(['academicYearId', 'termName'])
 export class Term {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
   @Column()
   termName: string;
-  @CreateDateColumn()
+
+  @Column({ type: 'date' })
   startDate: Date;
-  @CreateDateColumn()
+
+  @Column({ type: 'date' })
   endDate: Date;
 
-//   Rel: Many terms belong to one academic year
-  @ManyToOne(() => AcademicYear,{onDelete:'CASCADE'})
-  @JoinColumn({name: 'academicYearId'})
-  academicyear: AcademicYear;
+  @ManyToOne(() => AcademicYear, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'academicYearId' })
+  academicYear: AcademicYear;
 
-  @Column()
+  @Column('uuid')
   academicYearId: string;
-
 }

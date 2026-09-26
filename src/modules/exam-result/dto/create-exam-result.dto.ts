@@ -1,23 +1,20 @@
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsNumber, IsUUID, Max, Min } from 'class-validator';
 
 export class CreateExamResultDto {
-  @IsString()
-  @IsNotEmpty()
-  score: string;
-
   @IsUUID()
-  @IsNotEmpty()
   studentId: string;
 
   @IsUUID()
-  @IsNotEmpty()
   subjectId: string;
 
   @IsUUID()
-  @IsNotEmpty()
   examId: string;
 
   @IsUUID()
-  @IsNotEmpty()
   termId: string;
+
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  score: number;
 }

@@ -1,19 +1,19 @@
 import { IsNotEmpty, IsUUID } from 'class-validator';
 
 export class CreateTeachingAssignmentDto {
-  @IsUUID()
+  @IsUUID('4')
   @IsNotEmpty()
   teacherId: string;
 
-  @IsUUID()
+  @IsUUID('4')
   @IsNotEmpty()
   classId: string;
 
-  @IsUUID()
+  @IsUUID('4')
   @IsNotEmpty()
   subjectId: string;
 
-  @IsUUID()
+  @IsUUID('4')
   @IsNotEmpty()
   academicYearId: string;
 }

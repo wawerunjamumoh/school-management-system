@@ -7,6 +7,8 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { School } from '../../school/entities/school.entity.js';
+import { AcademicYear } from '../../academic-year/entities/academic-year.entity.js';
+import { Term } from '../../term/entities/term.entity.js';
 
 @Entity('events')
 export class Event {
@@ -19,7 +21,7 @@ export class Event {
   @Column({ type: 'text', nullable: true }) // Text type allows longer descriptions; nullable in case it's blank
   description: string;
 
-  @Column({ name: 'created_by' })
+  @Column({ name: 'created_by'})
   createdBy: string; // Typically records the admin/user UUID string
 
   @CreateDateColumn({ name: 'created_on' })
@@ -33,10 +35,24 @@ export class Event {
   endsAt: Date;
 
   // School relationship
-  @ManyToOne(() => School, (school) => school.events, { onDelete: 'CASCADE' })
+  @ManyToOne(() => School, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'schoolId' }) // FIXED: wrapped schoolId in string quotes
   school: School;
 
   @Column('uuid') // Explicitly marked as a UUID column type
   schoolId: string;
+
+  @ManyToOne(() => AcademicYear, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'academicYearId' })
+  academicYear: AcademicYear;
+
+  @Column()
+  academicYearId: string;
+
+  @ManyToOne(() => Term, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'termId' })
+  term: Term;
+
+  @Column()
+  termId: string;
 }

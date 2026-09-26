@@ -1,0 +1,53 @@
+@baseUrl = http://localhost:3000/api/v1/
+@schoolId = cb98d9d4-72d2-4723-b9c5-eaff89b30178
+
+### ==========================================
+### STUDENT 1 - Naruto
+### ==========================================
+
+POST {{baseUrl}}/auth/register/student
+Content-Type: application/json
+
+{
+  "firstName": "Naruto",
+  "lastName": "Uzumaki",
+  "email": "naruto@leaf.test",
+  "gender": "MALE",
+  "dateOfBirth": "2012-10-10",
+  "schoolId": "{{schoolId}}",
+  "password": "Password123!"
+}
+
+### ==========================================
+### STUDENT 2 - Sakura
+### ==========================================
+
+POST {{baseUrl}}/auth/register/student
+Content-Type: application/json
+
+{
+  "firstName": "Sakura",
+  "lastName": "Haruno",
+  "email": "sakura@leaf.test",
+  "gender": "FEMALE",
+  "dateOfBirth": "2012-03-28",
+  "schoolId": "{{schoolId}}",
+  "password": "Password123!"
+}
+
+### ==========================================
+### STUDENT 3 - Sasuke
+### ==========================================
+
+POST {{baseUrl}}/auth/register/student
+Content-Type: application/json
+
+{
+  "firstName": "Sasuke",
+  "lastName": "Uchiha",
+  "email": "sasuke@leaf.test",
+  "gender": "MALE",
+  "dateOfBirth": "2012-07-23",
+  "schoolId": "{{schoolId}}",
+  "password": "Password123!"
+}

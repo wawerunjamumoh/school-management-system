@@ -1,0 +1,186 @@
+### ==========================================
+
+### VARIABLES
+
+### ==========================================
+
+@baseUrl = http://localhost:3000/api/v1/
+
+# Hidden Leaf Academy
+
+@schoolId = cb98d9d4-72d2-4723-b9c5-eaff89b30178
+
+# Students
+
+@narutoId = 0ff28aff-bae2-45af-9405-951d3f11bb14
+@sakuraId = 34ad1f0d-1ce6-4700-a959-f5906166bab1
+@sasukeId = 362bc919-6b8a-4e57-9004-0c98078927e0
+
+# Naruto Uzumaki
+
+# Classes
+
+@classId = 4db0e58e-b36c-4312-ad2b-c69fc8b308aa
+
+# Grade 6 A
+
+# Academic Year
+
+@academicYearId = b8c34fe5-cc95-4b04-9a97-b6a857f7dbc7
+
+# 2026
+
+# Get this from SELECT * FROM term;
+
+@termId = 2a4f89ed-65c3-4a88-ba6f-49e4f4d72f9a
+
+@termOneId = 3c11cfbd-5bf7-41e8-ad6d-eb6ca85892aa
+
+# Enrollment
+
+@enrollmentId = YOUR-ENROLLMENT-UUID
+
+### ==========================================
+
+### CREATE ENROLLMENT
+
+### ==========================================
+
+### Enroll Naruto into Grade 6 A for 2026
+
+POST {{baseUrl}}/schools/{{schoolId}}/enrollments
+Content-Type: application/json
+
+{
+  "enrollDate": "2026-01-05",
+  "schoolId": "{{schoolId}}",
+  "status": "ACTIVE",
+  "studentId": "{{sakuraId}}",
+  "classId": "{{classId}}",
+  "academicYearId": "{{academicYearId}}",
+  "termId": "{{termOneId}}"
+}
+
+### ==========================================
+
+### GET ALL ENROLLMENTS
+
+### ==========================================
+
+### All enrollments belonging to Hidden Leaf Academy
+
+GET {{baseUrl}}/schools/{{schoolId}}/enrollments
+
+### ==========================================
+
+### GET ENROLLMENTS BY ACADEMIC YEAR
+
+### ==========================================
+
+### All 2026 enrollments
+
+GET {{baseUrl}}/schools/{{schoolId}}/enrollments/academic-year/{{academicYearId}}
+
+### ==========================================
+
+### GET ENROLLMENTS BY STUDENT
+
+### ==========================================
+
+### Naruto's enrollments
+
+GET {{baseUrl}}/schools/{{schoolId}}/enrollments/student/{{studentId}}
+
+### ==========================================
+
+### GET ENROLLMENTS BY CLASS
+
+### ==========================================
+
+### All students enrolled in Grade 6 A
+
+GET {{baseUrl}}/schools/{{schoolId}}/enrollments/class/{{classId}}
+
+### ==========================================
+
+### GET ONE ENROLLMENT
+
+### ==========================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/enrollments/{{enrollmentId}}
+
+### ==========================================
+
+### UPDATE ENROLLMENT
+
+### ==========================================
+
+### Example: make enrollment inactive
+
+PATCH {{baseUrl}}/schools/{{schoolId}}/enrollments/{{enrollmentId}}
+Content-Type: application/json
+
+{
+  "status": "INACTIVE"
+}
+
+### ==========================================
+
+### UPDATE ENROLLMENT DATE
+
+### ==========================================
+
+PATCH {{baseUrl}}/schools/{{schoolId}}/enrollments/{{enrollmentId}}
+Content-Type: application/json
+
+{
+  "enrollDate": "2026-09-27"
+}
+
+### ==========================================
+
+### DELETE ENROLLMENT
+
+### ==========================================
+
+### WARNING: Permanently removes this enrollment
+
+DELETE {{baseUrl}}/schools/{{schoolId}}/enrollments/{{enrollmentId}}
+
+### ==========================================
+
+### VALIDATION TEST — INVALID STATUS
+
+### ==========================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/enrollments
+Content-Type: application/json
+
+{
+  "enrollDate": "2026-09-26",
+  "schoolId": "{{schoolId}}",
+  "status": "PENDING",
+  "studentId": "{{studentId}}",
+  "classId": "{{classId}}",
+  "academicYearId": "{{academicYearId}}",
+  "termOneId": "{{termOneId}}"
+}
+
+### ==========================================
+
+### VALIDATION TEST — INVALID STUDENT UUID
+
+### ==========================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/enrollments
+Content-Type: application/json
+
+{
+  "enrollDate": "2026-09-26",
+  "schoolId": "{{schoolId}}",
+  "status": "ACTIVE",
+  "studentId": "not-a-uuid",
+  "classId": "{{classId}}",
+  "academicYearId": "{{academicYearId}}",
+  "termOneId": "{{termOneId}}"
+}

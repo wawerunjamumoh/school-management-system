@@ -17,4 +17,8 @@ describe('TermController', () => {
   it('should be defined', () => {
     expect(controller).toBeDefined();
   });
+
+    it('should call findAll', () => {
+        expect(controller.findAll).toBeDefined();
+    });
 });

@@ -1,27 +1,38 @@
-import { IsDateString, IsIn, IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateEnrollmentDto {
   @IsOptional()
   @IsDateString()
-  enrollDate?: string;
+  enrollDate: string;
 
-  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  schoolId: string;
+
+  @IsNotEmpty()
   @IsIn(['ACTIVE', 'INACTIVE'])
   status?: string;
 
-  @IsUUID()
+  @IsUUID('4')
   @IsNotEmpty()
   studentId: string;
 
-  @IsUUID()
+  @IsUUID('4')
   @IsNotEmpty()
   classId: string;
 
-  @IsUUID()
+  @IsUUID('4')
   @IsNotEmpty()
   academicYearId: string;
 
-  @IsUUID()
+  @IsUUID('4')
   @IsNotEmpty()
   termId: string;
 }

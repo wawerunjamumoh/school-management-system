@@ -4,35 +4,31 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
-  ManyToMany,
+  Unique,
 } from 'typeorm';
-import {Term} from '../../term/entities/term.entity.js'
-import {Class} from '../../class/entities/class.entity.js';
+
+import { School } from '../../school/entities/school.entity.js';
 
 @Entity('subject')
+@Unique(['schoolId', 'subjectId'])
 export class Subject {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  // Human/business identifier e.g. MAT101
   @Column()
-  subject_id: string;
+  subjectId: string;
+
   @Column()
   name: string;
-  @Column()
+
+  @Column({ type: 'text' })
   description: string;
 
-//   Rel:One term has many units/subjects
-  @ManyToOne(() => Term,{onDelete: 'CASCADE'})
-  @JoinColumn({name: 'termId'})
-  term = Term;
+  @ManyToOne(() => School, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'schoolId' })
+  school: School;
 
-  @Column()
-  tremId: string;
-
-//   Rel: Many class has many subjects
-  @ManyToMany(() => Class,{onDelete: 'CASCADE'})
-  @JoinColumn({name: 'classId'})
-  class = Class;
-
-  @Column()
+  @Column('uuid')
   schoolId: string;
 }

@@ -2,7 +2,10 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  JoinColumn,
+  OneToOne,
 } from 'typeorm';
+import { User } from '../../auth/entities/user.entity.js';
 
 @Entity('guardian')
 export class Guardian {
@@ -16,8 +19,11 @@ export class Guardian {
   email: string;
   @Column()
   phone: string;
-  @Column()
-  relatioship: string;
 
+  @OneToOne(()  => User,{onDelete: 'CASCADE'})
+  @JoinColumn({name: 'userId'})
+  user: User;
+  @Column({type: 'char',length: 36,unique: true})
+  userId: string;
 
 }

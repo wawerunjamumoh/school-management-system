@@ -1,0 +1,199 @@
+@baseUrl = http://localhost:3000/api/v1/
+
+### =========================================
+
+### HIDDEN LEAF ACADEMY
+
+### =========================================
+
+@schoolId = cb98d9d4-72d2-4723-b9c5-eaff89b30178
+
+### =========================================
+
+### TEACHERS
+
+### =========================================
+
+@irukaId = 9d1968ba-2760-4059-a851-eac582ef9f31
+@asumaId = c1bf90d1-990e-456c-87ce-beb06eed98aa
+@kakashiId = e1913442-cd55-4535-8f12-db047cc60b3b
+
+### =========================================
+
+### CLASSES
+
+### =========================================
+
+@grade6AId = 4db0e58e-b36c-4312-ad2b-c69fc8b308aa
+@grade6BId = 10cb48d2-281d-4fbc-9ca1-bbfa7342f2fd
+@grade7BId = b2285a51-ec22-4d09-8875-8547f6f5029d
+
+### =========================================
+
+### ACADEMIC YEAR
+
+### =========================================
+
+@academicYearId = b8c34fe5-cc95-4b04-9a97-b6a857f7dbc7
+
+### =========================================
+
+### ASSIGNMENT ID
+
+### =========================================
+
+@assignmentId = YOUR-ASSIGNMENT-UUID
+
+### =====================================================
+
+### 1. IRUKA → GRADE 6 A
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments
+Content-Type: application/json
+
+{
+  "teacherId": "{{irukaId}}",
+  "classId": "{{grade6AId}}",
+  "academicYearId": "{{academicYearId}}"
+}
+
+### =====================================================
+
+### 2. ASUMA → GRADE 6 B
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments
+Content-Type: application/json
+
+{
+  "teacherId": "{{asumaId}}",
+  "classId": "{{grade6BId}}",
+  "academicYearId": "{{academicYearId}}"
+}
+
+### =====================================================
+
+### 3. KAKASHI → GRADE 7 B
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments
+Content-Type: application/json
+
+{
+  "teacherId": "{{kakashiId}}",
+  "classId": "{{grade7BId}}",
+  "academicYearId": "{{academicYearId}}"
+}
+
+### =====================================================
+
+### GET ALL ASSIGNMENTS
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments
+
+### =====================================================
+
+### GET ASSIGNMENTS BY TEACHER — IRUKA
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments/teacher/{{irukaId}}
+
+### =====================================================
+
+### GET ASSIGNMENTS BY TEACHER — ASUMA
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments/teacher/{{asumaId}}
+
+### =====================================================
+
+### GET ASSIGNMENTS BY TEACHER — KAKASHI
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments/teacher/{{kakashiId}}
+
+### =====================================================
+
+### GET CLASS TEACHER — GRADE 6 A
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments/class/{{grade6AId}}
+
+### =====================================================
+
+### GET CLASS TEACHER — GRADE 6 B
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments/class/{{grade6BId}}
+
+### =====================================================
+
+### GET CLASS TEACHER — GRADE 7 B
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments/class/{{grade7BId}}
+
+### =====================================================
+
+### GET ASSIGNMENTS FOR 2026
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments/academic-year/{{academicYearId}}
+
+### =====================================================
+
+### GET ONE ASSIGNMENT
+
+### =====================================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments/{{assignmentId}}
+
+### =====================================================
+
+### DELETE ASSIGNMENT
+
+### =====================================================
+
+DELETE {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments/{{assignmentId}}
+
+### =====================================================
+
+### VALIDATION — MISSING TEACHER
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments
+Content-Type: application/json
+
+{
+  "classId": "{{grade6AId}}",
+  "academicYearId": "{{academicYearId}}"
+}
+
+### =====================================================
+
+### VALIDATION — INVALID TEACHER UUID
+
+### =====================================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/class-teacher-assignments
+Content-Type: application/json
+
+{
+  "teacherId": "not-a-uuid",
+  "classId": "{{grade6AId}}",
+  "academicYearId": "{{academicYearId}}"
+}

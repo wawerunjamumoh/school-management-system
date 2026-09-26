@@ -1,5 +1,4 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { Class } from '../../class/entities/class.entity.js';
 import { Event } from '../../event/entities/event.entity.js'; // Ensure this is imported if bidirectional
 
 @Entity('schools')
@@ -19,11 +18,7 @@ export class School {
   @Column({ name: 'school_email', unique: true }) // School emails are usually unique
   schoolEmail: string;
 
-  // Class relationship
-  @OneToMany(() => Class, (cls) => cls.school) // Fixed the 'class' reserved keyword bug
-  classes: Class[];
-
-  // Optional: Allows school.events lookup if needed
-  @OneToMany(() => Event, (event) => event.school)
-  events: Event[];
+  // // Optional: Allows school.events lookup if needed
+  // @OneToMany(() => Event, (event) => event.school)
+  // events: Event[];
 }

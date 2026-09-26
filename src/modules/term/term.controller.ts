@@ -1,34 +1,64 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
+
 import { TermService } from './term.service.js';
 import { CreateTermDto } from './dto/create-term.dto.js';
 import { UpdateTermDto } from './dto/update-term.dto.js';
 
-@Controller('term')
+@Controller('schools/:schoolId/terms')
 export class TermController {
   constructor(private readonly termService: TermService) {}
 
   @Post()
-  create(@Body() createTermDto: CreateTermDto) {
-    return this.termService.create(createTermDto);
+  async create(
+    @Param('schoolId') schoolId: string,
+    @Body() dto: CreateTermDto,
+  ) {
+    return this.termService.create(schoolId, dto);
   }
 
   @Get()
-  findAll() {
-    return this.termService.findAll();
+  async findAll(@Param('schoolId') schoolId: string) {
+    return this.termService.findAll(schoolId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.termService.findOne(+id);
+  @Get('academic-year/:academicYearId')
+  async findByAcademicYear(
+    @Param('schoolId') schoolId: string,
+    @Param('academicYearId') academicYearId: string,
+  ) {
+    return this.termService.findByAcademicYear(schoolId, academicYearId);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTermDto: UpdateTermDto) {
-    return this.termService.update(+id, updateTermDto);
+  @Get(':termId')
+  async findOne(
+    @Param('schoolId') schoolId: string,
+    @Param('termId') termId: string,
+  ) {
+    return this.termService.findOne(schoolId, termId);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.termService.remove(+id);
+  @Patch(':termId')
+  async update(
+    @Param('schoolId') schoolId: string,
+    @Param('termId') termId: string,
+    @Body() dto: UpdateTermDto,
+  ) {
+    return this.termService.update(schoolId, termId, dto);
+  }
+
+  @Delete(':termId')
+  async remove(
+    @Param('schoolId') schoolId: string,
+    @Param('termId') termId: string,
+  ) {
+    return this.termService.remove(schoolId, termId);
   }
 }

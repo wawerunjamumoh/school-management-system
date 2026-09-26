@@ -1,0 +1,175 @@
+@baseUrl = http://localhost:3000/api/v1/
+
+### =========================================
+
+### HIDDEN LEAF ACADEMY
+
+### =========================================
+
+@schoolId = cb98d9d4-72d2-4723-b9c5-eaff89b30178
+
+### Replace after creating a subject
+
+@subjectId = YOUR-SUBJECT-UUID
+
+### =========================================
+
+### CREATE SUBJECT — MATHEMATICS
+
+### =========================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/subjects
+Content-Type: application/json
+
+{
+  "subjectId": "MAT",
+  "name": "Mathematics",
+  "description": "Mathematics and numerical reasoning."
+}
+
+### =========================================
+
+### CREATE SUBJECT — ENGLISH
+
+### =========================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/subjects
+Content-Type: application/json
+
+{
+  "subjectId": "ENG",
+  "name": "English",
+  "description": "English language, communication and literature."
+}
+
+### =========================================
+
+### CREATE SUBJECT — SCIENCE
+
+### =========================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/subjects
+Content-Type: application/json
+
+{
+  "subjectId": "SCI",
+  "name": "Science",
+  "description": "Scientific knowledge, investigation and discovery."
+}
+
+### =========================================
+
+### GET ALL SUBJECTS
+
+### =========================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/subjects
+
+### =========================================
+
+### GET ONE SUBJECT
+
+### =========================================
+
+GET {{baseUrl}}/schools/{{schoolId}}/subjects/{{subjectId}}
+
+### =========================================
+
+### UPDATE SUBJECT
+
+### =========================================
+
+PATCH {{baseUrl}}/schools/{{schoolId}}/subjects/{{subjectId}}
+Content-Type: application/json
+
+{
+  "name": "Mathematics and Numeracy",
+  "description": "Mathematics, numeracy and logical reasoning."
+}
+
+### =========================================
+
+### PARTIAL UPDATE
+
+### =========================================
+
+PATCH {{baseUrl}}/schools/{{schoolId}}/subjects/{{subjectId}}
+Content-Type: application/json
+
+{
+  "description": "Mathematics, numerical reasoning and problem solving."
+}
+
+### =========================================
+
+### DELETE SUBJECT
+
+### =========================================
+
+DELETE {{baseUrl}}/schools/{{schoolId}}/subjects/{{subjectId}}
+
+### =========================================
+
+### VALIDATION TEST — EMPTY NAME
+
+### =========================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/subjects
+Content-Type: application/json
+
+{
+  "subjectId": "BIO",
+  "name": "",
+  "description": "Biology subject."
+}
+
+### =========================================
+
+### VALIDATION TEST — MISSING REQUIRED FIELDS
+
+### =========================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/subjects
+Content-Type: application/json
+
+{
+  "subjectId": "HIST"
+}
+
+### =========================================
+
+### VALIDATION TEST — SUBJECT ID TOO LONG
+
+### =========================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/subjects
+Content-Type: application/json
+
+{
+  "subjectId": "THIS-SUBJECT-CODE-IS-TOO-LONG",
+  "name": "History",
+  "description": "History and historical studies."
+}
+
+### =========================================
+
+### VALIDATION TEST — NAME TOO LONG
+
+### =========================================
+
+POST {{baseUrl}}/schools/{{schoolId}}/subjects
+Content-Type: application/json
+
+{
+  "subjectId": "HIST",
+  "name": "This subject name is intentionally longer than one hundred characters to test validation behavior",
+  "description": "History and historical studies."
+}
+
+### =========================================
+
+### INVALID SCHOOL UUID
+
+### =========================================
+
+GET {{baseUrl}}/schools/not-a-uuid/subjects
