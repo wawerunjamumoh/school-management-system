@@ -1,0 +1,45 @@
+                         AUTH
+                          │
+            ┌─────────────┴─────────────┐
+            │                           │
+          LOGIN                      REQUEST
+            │                           │
+       Credentials                  Access JWT
+            │                           │
+            ▼                           ▼
+     Verify password               Verify signature
+            │                           │
+            ▼                           ▼
+       Issue tokens               Check expiration
+        /       \                       │
+       /         \                      ▼
+   ACCESS      REFRESH               Allow/Deny
+     │            │
+     │            ▼
+     │        Store hash
+     │            │
+     ▼            │
+ API calls        │
+     │            │
+     │       Access expires
+     │            │
+     │            ▼
+     └──────→ /refresh
+                  │
+                  ▼
+             Verify JWT
+                  │
+                  ▼
+             Find session
+                  │
+                  ▼
+             Compare hash
+                  │
+                  ▼
+             Check expiry
+                  │
+                  ▼
+            Revoke old R
+                  │
+                  ▼
+             Issue A + R

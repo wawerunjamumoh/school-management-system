@@ -4,9 +4,10 @@ import {
   UnauthorizedException,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, IsNull } from 'typeorm';
 import {JwtService} from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import {ConfigService} from '@nestjs/config';
 
 // entities
 import { User, UserRole } from './entities/user.entity.js';
@@ -14,6 +15,7 @@ import { Student } from '../student/entities/student.entity.js';
 import { Guardian } from '../guardian/entities/guardian.entity.js';
 import { Teacher } from '../teacher/entities/teacher.entity.js';
 import { SchoolMembership,MembershipStatus } from '../school-membership/entities/school-membership.entity.js'
+import { RefreshToken } from './entities/refresh-token.entity.js';
 
 // dtos
 import { Gender, RegisterStudentDto } from './dto/register-student.dto.js';
@@ -27,33 +29,63 @@ export class AuthService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   //   Login
   async login(dto: LoginDto) {
     const userRepo = this.dataSource.getRepository(User);
 
-    const user = await userRepo.findOne({
-      where: {
-        email: dto.email,
-      },
-    });
+    const user = await userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.email = :email', { email: dto.email })
+      .getOne();
 
     if (!user) {
-      throw new UnauthorizedException('Invalid email or Password!');
+      throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Verify password
+    const passwordValid = await bcrypt.compare(
+      dto.password,
+      user.passwordHash,
+    );
+
+    if (!passwordValid) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
     const payload = {
       sub: user.id,
-      email: user.email,
       role: user.role,
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
+    const refreshToken = await this.jwtService.signAsync(payload,{
+      secret: this.configService.getOrThrow<string>(
+        'JWT_REFRESH_SECRET',
+      ),
+      expiresIn: '7d',
+    });
+
+    // Hash and store refresh token
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
+    const refreshTokenEntity = this.dataSource
+      .getRepository(RefreshToken)
+      .create({
+        userId: user.id,
+        tokenHash: refreshTokenHash,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        revokedAt: null,
+      });
+
+    await this.dataSource.getRepository(RefreshToken).save(refreshTokenEntity);
+
     return {
       message: 'login successful',
       accessToken,
+      refreshToken,
     };
   }
 
@@ -73,6 +105,137 @@ export class AuthService {
       message: 'Logout successful',
       userId: user.id,
     };
+  }
+
+  // refresh token
+  async refresh(refreshToken: string){
+    const refreshTokenRepo = this.dataSource.getRepository(RefreshToken);
+
+  //   1.verify refresh  jwt
+    let payload: any;
+    try {
+      payload = await this.jwtService.verifyAsync(
+        refreshToken,
+        {
+          secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+        },
+      )
+    } catch {
+      throw new UnauthorizedException('Invalid Or Expired refresh Token.')
+    }
+
+  //   2.Get the userId From jwt
+    const userId = payload.sub;
+    if (!userId) {
+      throw new UnauthorizedException(
+        'Invalid refresh token.',
+      );
+    }
+
+  //   3.find all active refresh token for this user
+    const storedTokens = await refreshTokenRepo.find({
+      where: {
+        userId,
+        revokedAt: IsNull(),
+      },
+    });
+
+    if (storedTokens.length === 0) {
+      throw new UnauthorizedException(
+        'Refresh token has been revoked or does not exist.',
+      );
+    }
+
+    // 4. Find which stored hash belongs to this refresh token
+    let matchedToken: RefreshToken | null = null;
+
+    for (const storedToken of storedTokens) {
+      const matches = await bcrypt.compare(
+        refreshToken,
+        storedToken.tokenHash,
+      );
+
+      if (matches) {
+        matchedToken = storedToken;
+        break;
+      }
+    }
+
+    if (!matchedToken) {
+      throw new UnauthorizedException(
+        'Invalid refresh token.',
+      );
+    }
+
+    // 5. Check database expiry
+    if (matchedToken.expiresAt < new Date()) {
+      throw new UnauthorizedException(
+        'Refresh token has expired.',
+      );
+    }
+
+    // 6. Get the user
+    const userRepo = this.dataSource.getRepository(User);
+
+    const user = await userRepo.findOne({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'User no longer exists.',
+      );
+    }
+
+    // 7. Revoke the old refresh token
+    matchedToken.revokedAt = new Date();
+
+    await refreshTokenRepo.save(matchedToken);
+
+    // 8. Create new access-token payload
+    const newPayload = {
+      sub: user.id,
+      role: user.role,
+    };
+
+    // 9. Generate new access token
+    const newAccessToken =
+      await this.jwtService.signAsync(newPayload);
+
+    // 10. Generate new refresh token
+    const newRefreshToken =
+      await this.jwtService.signAsync(newPayload, {
+        secret: this.configService.getOrThrow<string>(
+          'JWT_REFRESH_SECRET',
+        ),
+        expiresIn: '7d',
+      });
+
+    // 11. Hash the new refresh token
+    const newRefreshTokenHash =
+      await bcrypt.hash(newRefreshToken, 10);
+
+    // 12. Store new refresh token
+    const newStoredToken = refreshTokenRepo.create({
+      userId: user.id,
+      tokenHash: newRefreshTokenHash,
+      expiresAt: new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ),
+      revokedAt: null,
+    });
+
+    await refreshTokenRepo.save(newStoredToken);
+
+    // 13. Return new token pair
+    return {
+      message: 'Token refreshed successfully',
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    };
+
   }
 
   // delete account
@@ -228,7 +391,7 @@ export class AuthService {
       const membership = manager.create(SchoolMembership, {
         userId: savedUser.id,
         schoolId: dto.schoolId,
-        role: UserRole.STUDENT,
+        role: UserRole.GUARDIAN,
         status: MembershipStatus.ACTIVE,
       })
 
@@ -290,7 +453,7 @@ export class AuthService {
       const membership = manager.create(SchoolMembership, {
         userId: savedUser.id,
         schoolId: dto.schoolId,
-        role: UserRole.STUDENT,
+        role: UserRole.TEACHER,
         status: MembershipStatus.ACTIVE,
       })
 
@@ -332,7 +495,7 @@ export class AuthService {
     // @ts-ignore
     const user = manager.create(User, {
       email: dto.email,
-      password: hashedPassword,
+      passwordHash: hashedPassword,
       role: UserRole.SUPER_ADMIN,
     });
 

@@ -51,3 +51,20 @@ Content-Type: application/json
   "schoolId": "{{schoolId}}",
   "password": "Password123!"
 }
+
+### ==========================================
+### STUDENT 3 - myStudent
+### ==========================================
+
+POST {{baseUrl}}/auth/register/student
+Content-Type: application/json
+
+{
+  "firstName": "Naruto",
+  "lastName": "Uchiha",
+  "email": "mi@leaf.test",
+  "gender": "MALE",
+  "dateOfBirth": "2012-07-23",
+  "schoolId": "{{schoolId}}",
+  "password": "Password7810@@"
+}

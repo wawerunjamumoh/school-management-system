@@ -5,6 +5,8 @@ import {
   Param,
   HttpStatus,
   HttpCode,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 
 import { AuthService } from './auth.service.js';
@@ -14,6 +16,9 @@ import { RegisterGuardianDto } from './dto/register-gurdian.dto.js';
 import { RegisterStudentDto } from './dto/register-student.dto.js';
 import { RegisterTeacherDto } from './dto/register-teacher.dto.js';
 import { RegisterSuperAdminDto } from './dto/register-super-admin.dto.js';
+import { RefreshTokenDto } from './dto/refresh-token.dto.js'
+// guard
+import {JwtAuthGuard} from './guards/jwt-auth.guard.js';
 
 @Controller('auth')
 export class AuthController {
@@ -48,6 +53,21 @@ export class AuthController {
     @Body('newPassword') newPassword: string,
   ) {
     return this.authService.resetPassword(userId, newPassword);
+  }
+
+  // USER ACCOUNT
+  @Post('users/me')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async user(@Req() req:any) {
+    return req.user;
+
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refresh(dto.refreshToken)
   }
 
   // STUDENT
