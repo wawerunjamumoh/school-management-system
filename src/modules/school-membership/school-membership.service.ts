@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { DataSource,DeepPartial } from 'typeorm';
+import { DataSource,DeepPartial, Repository } from 'typeorm';
 
 import {
   SchoolMembership,
@@ -16,10 +16,17 @@ import { School } from '../school/entities/school.entity.js';
 
 import { CreateSchoolMembershipDto } from './dto/create-school-membership.dto.js';
 import { UpdateSchoolMembershipDto } from './dto/update-school-membership.dto.js';
+import { InjectRepository } from '@nestjs/typeorm';
+
+
 
 @Injectable()
 export class SchoolMembershipService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectRepository(SchoolMembership)
+    private readonly membershipRepo: Repository<SchoolMembership>,
+    private readonly dataSource: DataSource
+  ) {}
 
   // ==========================================
   // CREATE
@@ -229,5 +236,45 @@ export class SchoolMembershipService {
         school: true,
       },
     });
+  }
+
+//   Update user role
+  async UpdateRole(schoolId: string,userId: string,newRole: UserRole){
+    // 1. Find the user's membership in this school
+    const membership = await this.membershipRepo.findOne({
+      where: {
+        schoolId,
+        userId,
+      },
+    });
+
+    // 2. Make sure membership exists
+    if (!membership) {
+      throw new NotFoundException(
+        'User is not a member of this school',
+      );
+    }
+
+    // 3. Only teachers can become headteachers
+    if (
+      newRole === UserRole.HEAD_TEACHER &&
+      membership.role !== UserRole.TEACHER
+    ) {
+      throw new BadRequestException(
+        'Only a teacher can be promoted to head teacher',
+      );
+    }
+
+    // 4. Change the role
+    membership.role = newRole;
+
+    // 5. Save
+    const updatedMembership =
+      await this.membershipRepo.save(membership);
+
+    return {
+      message: 'Membership role updated successfully',
+      membership: updatedMembership,
+    };
   }
 }

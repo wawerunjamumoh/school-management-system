@@ -1,18 +1,24 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
 } from '@nestjs/common';
 
 import { GuardianStudentService } from './guardian-student.service.js';
 import { CreateGuardianStudentDto } from './dto/create-guardian-student.dto.js';
 import { UpdateGuardianStudentDto } from './dto/update-guardian-student.dto.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
+import { Roles } from '../auth/decorators/roles.decorator.js';
+import { UserRole } from '../auth/entities/user.entity.js';
 
-@Controller('guardian-students')
+@Controller('schools/:schoolId/guardian-students') // 👈 Scoped under school context
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class GuardianStudentController {
   constructor(
     private readonly guardianStudentService: GuardianStudentService,
@@ -23,8 +29,12 @@ export class GuardianStudentController {
   // =========================================
 
   @Post()
-  create(@Body() createGuardianStudentDto: CreateGuardianStudentDto) {
-    return this.guardianStudentService.create(createGuardianStudentDto);
+  @Roles(UserRole.TEACHER, UserRole.HEAD_TEACHER) // 🔒 Restricted to management
+  create(
+    @Param('schoolId') schoolId: string,
+    @Body() createGuardianStudentDto: CreateGuardianStudentDto,
+  ) {
+    return this.guardianStudentService.create(schoolId, createGuardianStudentDto);
   }
 
   // =========================================
@@ -32,8 +42,9 @@ export class GuardianStudentController {
   // =========================================
 
   @Get()
-  findAll() {
-    return this.guardianStudentService.findAll();
+  @Roles(UserRole.SUPER_ADMIN, UserRole.HEAD_TEACHER) // 🔒 Management audit tool
+  findAll(@Param('schoolId') schoolId: string) {
+    return this.guardianStudentService.findAll(schoolId);
   }
 
   // =========================================
@@ -41,8 +52,12 @@ export class GuardianStudentController {
   // =========================================
 
   @Get('guardian/:guardianId/students')
-  findStudentsByGuardian(@Param('guardianId') guardianId: string) {
-    return this.guardianStudentService.findStudentsByGuardian(guardianId);
+  @Roles(UserRole.SUPER_ADMIN, UserRole.HEAD_TEACHER, UserRole.GUARDIAN) // 🔓 Guardians can view their own links
+  findStudentsByGuardian(
+    @Param('schoolId') schoolId: string,
+    @Param('guardianId') guardianId: string,
+  ) {
+    return this.guardianStudentService.findStudentsByGuardian(schoolId, guardianId);
   }
 
   // =========================================
@@ -50,19 +65,26 @@ export class GuardianStudentController {
   // =========================================
 
   @Get('student/:studentId/guardians')
-  findGuardiansByStudent(@Param('studentId') studentId: string) {
-    return this.guardianStudentService.findGuardiansByStudent(studentId);
+  @Roles(UserRole.SUPER_ADMIN, UserRole.HEAD_TEACHER, UserRole.STUDENT, UserRole.GUARDIAN) // 🔓 Students/Guardians can view family ties
+  findGuardiansByStudent(
+    @Param('schoolId') schoolId: string,
+    @Param('studentId') studentId: string,
+  ) {
+    return this.guardianStudentService.findGuardiansByStudent(schoolId, studentId);
   }
 
+  // =========================================
+  // GUARDIAN & STUDENT → RESULTS
+  // =========================================
+
   @Get(':guardianId/students/:studentId/results')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.HEAD_TEACHER, UserRole.STUDENT, UserRole.GUARDIAN) // 🔓 Students/Guardians view academic records
   async getStudentResults(
+    @Param('schoolId') schoolId: string,
     @Param('guardianId') guardianId: string,
     @Param('studentId') studentId: string,
   ) {
-    return this.guardianStudentService.getStudentResults(
-      guardianId,
-      studentId,
-    );
+    return this.guardianStudentService.getStudentResults(schoolId, guardianId, studentId);
   }
 
   // =========================================
@@ -70,8 +92,12 @@ export class GuardianStudentController {
   // =========================================
 
   @Get(':relationshipId')
-  findOne(@Param('relationshipId') relationshipId: string) {
-    return this.guardianStudentService.findOne(relationshipId);
+  @Roles(UserRole.SUPER_ADMIN, UserRole.HEAD_TEACHER, UserRole.GUARDIAN)
+  findOne(
+    @Param('schoolId') schoolId: string,
+    @Param('relationshipId') relationshipId: string,
+  ) {
+    return this.guardianStudentService.findOne(schoolId, relationshipId);
   }
 
   // =========================================
@@ -79,11 +105,14 @@ export class GuardianStudentController {
   // =========================================
 
   @Patch(':relationshipId')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.HEAD_TEACHER) // 🔒 Restricted to management
   update(
+    @Param('schoolId') schoolId: string,
     @Param('relationshipId') relationshipId: string,
     @Body() updateGuardianStudentDto: UpdateGuardianStudentDto,
   ) {
     return this.guardianStudentService.update(
+      schoolId,
       relationshipId,
       updateGuardianStudentDto,
     );
@@ -94,9 +123,11 @@ export class GuardianStudentController {
   // =========================================
 
   @Delete(':relationshipId')
-  remove(@Param('relationshipId') relationshipId: string) {
-    return this.guardianStudentService.remove(relationshipId);
+  @Roles(UserRole.SUPER_ADMIN, UserRole.HEAD_TEACHER) // 🔒 Restricted to management
+  remove(
+    @Param('schoolId') schoolId: string,
+    @Param('relationshipId') relationshipId: string,
+  ) {
+    return this.guardianStudentService.remove(schoolId, relationshipId);
   }
-
-
 }

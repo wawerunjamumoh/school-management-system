@@ -22,3 +22,18 @@ Content-Type: application/json
 {
   "refreshToken": "{{Refresh_Token}}"
 }
+
+### LOGIN AS HEADTEACHER
+
+POST http://localhost:3000/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "tsunade@leaf.test",
+  "password": "Password123!"
+}
+
+### GET ALL TEACHERS - HEADTEACHER ONLY
+
+GET http://localhost:3000/api/v1/schools/cb98d9d4-72d2-4723-b9c5-eaff89b30178/teachers
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxYjM4M2I5OS1iOWI2LTQ3ODMtYjJlOC1iMTBkZTZlZGI5NTEiLCJyb2xlIjoiVEVBQ0hFUiIsImlhdCI6MTc5MDc4NTU1MCwiZXhwIjoxNzkwNzg2NDUwfQ.kfl_OqbIbTQsCIooJYjjcK1so51ujj9xDPC_GgjJkew

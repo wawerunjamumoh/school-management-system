@@ -10,11 +10,15 @@ import {Class} from '../class/entities/class.entity.js'
 import {AcademicYear} from '../academic-year/entities/academic-year.entity.js';
 import {School} from '../school/entities/school.entity.js';
 import { ClassTeacherAssignmentController } from './class-teacher-assignment.controller.js';
+import { AuthModule } from '../auth/auth.module.js';
+import { SchoolMembership } from '../school-membership/entities/school-membership.entity.js';
 
 @Module({
   imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       ClassTeacherAssignment,
+      SchoolMembership,
       Teacher,
       Subject,
       Class,

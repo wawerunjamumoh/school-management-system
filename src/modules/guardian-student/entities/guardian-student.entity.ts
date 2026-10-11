@@ -10,13 +10,13 @@ import {
 import { Guardian } from '../../guardian/entities/guardian.entity.js';
 import { Student } from '../../student/entities/student.entity.js';
 
-@Entity('guardian-student')
+@Entity('guardian_student')
 @Unique(['guardianId', 'studentId'])
 export class GuardianStudent {
+
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // Guardian
   @ManyToOne(() => Guardian, {
     onDelete: 'CASCADE',
   })
@@ -26,7 +26,6 @@ export class GuardianStudent {
   @Column()
   guardianId: string;
 
-  // Student
   @ManyToOne(() => Student, {
     onDelete: 'CASCADE',
   })
@@ -35,4 +34,14 @@ export class GuardianStudent {
 
   @Column()
   studentId: string;
+
+  @Column({
+    nullable: true,
+  })
+  relationship?: string;
+
+  @Column({
+    default: false,
+  })
+  isPrimary: boolean;
 }

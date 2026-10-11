@@ -8,10 +8,20 @@ import { School } from '../school/entities/school.entity.js';
 import { AcademicYear } from '../academic-year/entities/academic-year.entity.js';
 import { Term } from '../term/entities/term.entity.js';
 import { ExamResult } from '../exam-result/entities/exam-result.entity.js';
+import { AuthModule } from '../auth/auth.module.js';
+import { SchoolMembership } from '../school-membership/entities/school-membership.entity.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Exam, School, AcademicYear, Term, ExamResult]),
+    AuthModule,
+    TypeOrmModule.forFeature([
+      Exam,
+      SchoolMembership,
+      School,
+      AcademicYear,
+      Term,
+      ExamResult,
+    ]),
   ],
   controllers: [ExamController],
   providers: [ExamService],

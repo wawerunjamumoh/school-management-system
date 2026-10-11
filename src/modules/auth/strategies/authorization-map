@@ -1,0 +1,38 @@
+1. Teachers
+   └── HEAD_TEACHER can list teachers
+
+2. Students
+   └── HEAD_TEACHER can manage
+   └── TEACHER sees assigned students
+
+3. Classes
+   └── HEAD_TEACHER manages
+   └── TEACHER sees assigned classes
+
+4. Teaching Assignments
+   └── HEAD_TEACHER manages
+   └── TEACHER sees own
+
+5. Exams
+   └── HEAD_TEACHER manages
+   └── TEACHER manages assigned
+
+6. Exam Results
+   └── TEACHER manages assigned
+   └── STUDENT sees own
+   └── GUARDIAN sees child's
+
+7. Attendance
+   └── same relationship model
+
+8. Events
+   └── school-level permissions
+
+A. For ClassController, use:
+
+   Create class: SUPER_ADMIN, HEAD_TEACHER
+   View classes: all authenticated school members
+   View one class: all authenticated school members
+   Update class: SUPER_ADMIN, HEAD_TEACHER
+   Delete class: SUPER_ADMIN, HEAD_TEACHER
+

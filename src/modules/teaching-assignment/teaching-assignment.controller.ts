@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
 import { TeachingAssignmentService } from './teaching-assignment.service.js';
@@ -13,7 +14,13 @@ import { TeachingAssignmentService } from './teaching-assignment.service.js';
 import { CreateTeachingAssignmentDto } from './dto/create-teaching-assignment.dto.js';
 import { UpdateTeachingAssignmentDto } from './dto/update-teaching-assignment.dto.js';
 
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
+import { Roles } from '../auth/decorators/roles.decorator.js';
+import { UserRole } from '../auth/entities/user.entity.js';
+
 @Controller('schools/:schoolId/teaching-assignments')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class TeachingAssignmentController {
   constructor(
     private readonly teachingAssignmentService: TeachingAssignmentService,
@@ -24,6 +31,7 @@ export class TeachingAssignmentController {
   // =====================================================
 
   @Post()
+  @Roles(UserRole.SUPER_ADMIN, UserRole.HEAD_TEACHER)
   create(
     @Param('schoolId') schoolId: string,
     @Body() dto: CreateTeachingAssignmentDto,
@@ -36,6 +44,11 @@ export class TeachingAssignmentController {
   // =====================================================
 
   @Get()
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.HEAD_TEACHER,
+    UserRole.TEACHER,
+  )
   findAll(@Param('schoolId') schoolId: string) {
     return this.teachingAssignmentService.findAll(schoolId);
   }
@@ -45,11 +58,19 @@ export class TeachingAssignmentController {
   // =====================================================
 
   @Get('teacher/:teacherId')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.HEAD_TEACHER,
+    UserRole.TEACHER,
+  )
   findByTeacher(
     @Param('schoolId') schoolId: string,
     @Param('teacherId') teacherId: string,
   ) {
-    return this.teachingAssignmentService.findByTeacher(schoolId, teacherId);
+    return this.teachingAssignmentService.findByTeacher(
+      schoolId,
+      teacherId,
+    );
   }
 
   // =====================================================
@@ -57,11 +78,19 @@ export class TeachingAssignmentController {
   // =====================================================
 
   @Get('class/:classId')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.HEAD_TEACHER,
+    UserRole.TEACHER,
+  )
   findByClass(
     @Param('schoolId') schoolId: string,
     @Param('classId') classId: string,
   ) {
-    return this.teachingAssignmentService.findByClass(schoolId, classId);
+    return this.teachingAssignmentService.findByClass(
+      schoolId,
+      classId,
+    );
   }
 
   // =====================================================
@@ -69,11 +98,19 @@ export class TeachingAssignmentController {
   // =====================================================
 
   @Get('subject/:subjectId')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.HEAD_TEACHER,
+    UserRole.TEACHER,
+  )
   findBySubject(
     @Param('schoolId') schoolId: string,
     @Param('subjectId') subjectId: string,
   ) {
-    return this.teachingAssignmentService.findBySubject(schoolId, subjectId);
+    return this.teachingAssignmentService.findBySubject(
+      schoolId,
+      subjectId,
+    );
   }
 
   // =====================================================
@@ -81,6 +118,11 @@ export class TeachingAssignmentController {
   // =====================================================
 
   @Get('academic-year/:academicYearId')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.HEAD_TEACHER,
+    UserRole.TEACHER,
+  )
   findByAcademicYear(
     @Param('schoolId') schoolId: string,
     @Param('academicYearId') academicYearId: string,
@@ -96,11 +138,19 @@ export class TeachingAssignmentController {
   // =====================================================
 
   @Get(':assignmentId')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.HEAD_TEACHER,
+    UserRole.TEACHER,
+  )
   findOne(
     @Param('schoolId') schoolId: string,
     @Param('assignmentId') assignmentId: string,
   ) {
-    return this.teachingAssignmentService.findOne(schoolId, assignmentId);
+    return this.teachingAssignmentService.findOne(
+      schoolId,
+      assignmentId,
+    );
   }
 
   // =====================================================
@@ -108,12 +158,17 @@ export class TeachingAssignmentController {
   // =====================================================
 
   @Patch(':assignmentId')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.HEAD_TEACHER)
   update(
     @Param('schoolId') schoolId: string,
     @Param('assignmentId') assignmentId: string,
     @Body() dto: UpdateTeachingAssignmentDto,
   ) {
-    return this.teachingAssignmentService.update(schoolId, assignmentId, dto);
+    return this.teachingAssignmentService.update(
+      schoolId,
+      assignmentId,
+      dto,
+    );
   }
 
   // =====================================================
@@ -121,10 +176,15 @@ export class TeachingAssignmentController {
   // =====================================================
 
   @Delete(':assignmentId')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.HEAD_TEACHER)
   remove(
     @Param('schoolId') schoolId: string,
     @Param('assignmentId') assignmentId: string,
   ) {
-    return this.teachingAssignmentService.remove(schoolId, assignmentId);
+    return this.teachingAssignmentService.remove(
+      schoolId,
+      assignmentId,
+    );
   }
 }
+;

@@ -13,6 +13,9 @@ import { Teacher } from '../teacher/entities/teacher.entity.js';
 import { Guardian } from '../guardian/entities/guardian.entity.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { PassportModule } from '@nestjs/passport';
+import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
+import { SchoolMembership } from '../school-membership/entities/school-membership.entity.js';
+
 
 @Module({
   imports: [
@@ -22,6 +25,7 @@ import { PassportModule } from '@nestjs/passport';
       Teacher,
       Guardian,
       RefreshToken,
+      SchoolMembership,
     ]),
 
     PassportModule.register({
@@ -45,11 +49,15 @@ import { PassportModule } from '@nestjs/passport';
   providers: [
     AuthService,
     JwtStrategy,
+    JwtAuthGuard,
+
   ],
 
   exports: [
     JwtModule,
     PassportModule,
+    JwtAuthGuard,
+
   ],
 })
 export class AuthModule {}

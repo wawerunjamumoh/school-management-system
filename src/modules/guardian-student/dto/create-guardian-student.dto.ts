@@ -8,4 +8,8 @@ export class CreateGuardianStudentDto {
   @IsUUID()
   @IsNotEmpty()
   studentId: string;
+
+  @IsUUID()
+  @IsNotEmpty()
+  schoolId: string;
 }

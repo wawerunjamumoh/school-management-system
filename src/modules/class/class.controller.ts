@@ -6,13 +6,20 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
 
 import { ClassService } from './class.service.js';
 import { CreateClassDto } from './dto/create-class.dto.js';
 import { UpdateClassDto } from './dto/update-class.dto.js';
 
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
+import { Roles } from '../auth/decorators/roles.decorator.js';
+import { UserRole } from '../auth/entities/user.entity.js';
+
 @Controller('schools/:schoolId/classes')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ClassController {
   constructor(
     private readonly classService: ClassService,
@@ -24,6 +31,10 @@ export class ClassController {
 
   // POST /schools/:schoolId/classes
   @Post()
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.HEAD_TEACHER,
+  )
   async createClass(
     @Param('schoolId') schoolId: string,
     @Body() dto: CreateClassDto,
@@ -65,6 +76,10 @@ export class ClassController {
 
   // PATCH /schools/:schoolId/classes/:classId
   @Patch(':classId')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.HEAD_TEACHER,
+  )
   async updateClass(
     @Param('schoolId') schoolId: string,
     @Param('classId') classId: string,
@@ -83,6 +98,10 @@ export class ClassController {
 
   // DELETE /schools/:schoolId/classes/:classId
   @Delete(':classId')
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.HEAD_TEACHER,
+  )
   async removeClass(
     @Param('schoolId') schoolId: string,
     @Param('classId') classId: string,
@@ -93,3 +112,4 @@ export class ClassController {
     );
   }
 }
+

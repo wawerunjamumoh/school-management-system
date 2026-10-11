@@ -8,10 +8,21 @@ import { GuardianStudent } from './entities/guardian-student.entity.js';
 import { Guardian } from '../guardian/entities/guardian.entity.js';
 import { Student } from '../student/entities/student.entity.js';
 import { ExamResult } from '../exam-result/entities/exam-result.entity.js';
+import { AuthModule } from '../auth/auth.module.js';
+import { SchoolMembership } from '../school-membership/entities/school-membership.entity.js';
+import { Enrollment } from '../enrollment/entities/enrollment.entity.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([GuardianStudent, Guardian, Student, ExamResult]),
+    AuthModule,
+    TypeOrmModule.forFeature([
+      GuardianStudent,
+      SchoolMembership,
+      Guardian,
+      Enrollment,
+      Student,
+      ExamResult
+    ]),
   ],
   controllers: [GuardianStudentController],
   providers: [GuardianStudentService],

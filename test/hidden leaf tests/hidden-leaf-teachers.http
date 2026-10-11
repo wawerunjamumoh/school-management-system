@@ -48,3 +48,31 @@ Content-Type: application/json
   "schoolId": "{{schoolId}}",
   "password": "Password123!"
 }
+
+### ==========================================
+### TEACHER 4 - Tsunade
+### ==========================================
+
+POST {{baseUrl}}/auth/register/teacher
+Content-Type: application/json
+
+{
+  "firstName": "Hookage",
+  "lastName": "Tsunade",
+  "email": "tsunade@leaf.test",
+  "phone": "0711000003",
+  "schoolId": "{{schoolId}}",
+  "password": "Password123!"
+}
+
+### Make Tsunade the Head Teacher
+### Promote teacher to head teacher
+
+PATCH http://localhost:3000/api/v1/schools/cb98d9d4-72d2-4723-b9c5-eaff89b30178/memberships/1b383b99-b9b6-4783-b2e8-b10de6edb951/role
+Content-Type: application/json
+
+{
+  "role": "HEAD_TEACHER"
+}
+
+### Get all teachers - accessible only by headteacher
