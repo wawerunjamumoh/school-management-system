@@ -1,3 +1,4 @@
+
 import {
   Injectable,
   NotFoundException,
@@ -6,16 +7,72 @@ import {
 import { DataSource } from 'typeorm';
 
 import { Student } from './entities/student.entity.js';
-import { User,UserRole } from '../auth/entities/user.entity.js';
+import { UserRole } from '../auth/entities/user.entity.js';
 import { SchoolMembership } from '../school-membership/entities/school-membership.entity.js';
-
 import { UpdateStudentDto } from './dto/update-student.dto.js';
+import { RedisService } from '../../redis/redis.service.js';
 
 @Injectable()
 export class StudentService {
+  private readonly CACHE_TTL = 60;
+
   constructor(
     private readonly dataSource: DataSource,
+    private readonly redisService: RedisService,
   ) {}
+
+  // ==========================================
+  // CACHE HELPERS
+  // ==========================================
+
+  private getStudentProfileCacheKey(studentId: string): string {
+    return `student:${studentId}:profile`;
+  }
+
+  private getSchoolStudentsCacheKey(schoolId: string): string {
+    return `school:${schoolId}:students:all`;
+  }
+
+  private async getOrSetCache<T>(
+    key: string,
+    loader: () => Promise<T>,
+  ): Promise<T> {
+    const cached = await this.redisService.getJson<T>(key);
+
+    if (cached !== null && cached !== undefined) {
+      return cached;
+    }
+
+    const result = await loader();
+
+    await this.redisService.setJson(
+      key,
+      result,
+      this.CACHE_TTL,
+    );
+
+    return result;
+  }
+
+  /**
+   * A student may have memberships in multiple schools.
+   * Invalidate every affected school's student list.
+   */
+  private async invalidateStudentCaches(
+    studentId: string,
+    schoolIds: string[],
+  ): Promise<void> {
+    const keys = new Set<string>([
+      this.getStudentProfileCacheKey(studentId),
+      ...schoolIds.map((schoolId) =>
+        this.getSchoolStudentsCacheKey(schoolId),
+      ),
+    ]);
+
+    await Promise.all(
+      [...keys].map((key) => this.redisService.delete(key)),
+    );
+  }
 
   // ==========================================
   // FIND ONE STUDENT
@@ -24,21 +81,21 @@ export class StudentService {
   async findOne(
     schoolId: string,
     studentId: string,
-  ) {
-    const studentRepository =
-      this.dataSource.getRepository(Student);
-
+  ): Promise<Student> {
     const membershipRepository =
       this.dataSource.getRepository(SchoolMembership);
 
-    // Verify that the student belongs to this school
-    const membership =
-      await membershipRepository.findOne({
-        where: {
-          userId: studentId,
-          schoolId,
-        },
-      });
+    const studentRepository =
+      this.dataSource.getRepository(Student);
+
+    // Always verify membership before returning cached data.
+    const membership = await membershipRepository.findOne({
+      where: {
+        userId: studentId,
+        schoolId,
+        role: UserRole.STUDENT,
+      },
+    });
 
     if (!membership) {
       throw new NotFoundException(
@@ -46,19 +103,20 @@ export class StudentService {
       );
     }
 
-    const student = await studentRepository.findOne({
-      where: {
-        id: studentId,
+    return this.getOrSetCache(
+      this.getStudentProfileCacheKey(studentId),
+      async () => {
+        const student = await studentRepository.findOne({
+          where: { id: studentId },
+        });
+
+        if (!student) {
+          throw new NotFoundException('Student not found');
+        }
+
+        return student;
       },
-    });
-
-    if (!student) {
-      throw new NotFoundException(
-        'Student not found',
-      );
-    }
-
-    return student;
+    );
   }
 
   // ==========================================
@@ -76,14 +134,13 @@ export class StudentService {
     const membershipRepository =
       this.dataSource.getRepository(SchoolMembership);
 
-    // Verify school membership
-    const membership =
-      await membershipRepository.findOne({
-        where: {
-          userId: studentId,
-          schoolId,
-        },
-      });
+    const membership = await membershipRepository.findOne({
+      where: {
+        userId: studentId,
+        schoolId,
+        role: UserRole.STUDENT,
+      },
+    });
 
     if (!membership) {
       throw new NotFoundException(
@@ -91,24 +148,31 @@ export class StudentService {
       );
     }
 
-    // Find student
     const student = await studentRepository.findOne({
-      where: {
-        id: studentId,
-      },
+      where: { id: studentId },
     });
 
     if (!student) {
-      throw new NotFoundException(
-        'Student not found',
-      );
+      throw new NotFoundException('Student not found');
     }
 
-    // Apply DTO changes
+    // Capture memberships so cached lists in other schools
+    // can also be invalidated.
+    const memberships = await membershipRepository.find({
+      where: { userId: studentId },
+    });
+
     Object.assign(student, dto);
 
-    const updatedStudent =
-      await studentRepository.save(student);
+    const updatedStudent = await studentRepository.save(student);
+
+    await this.invalidateStudentCaches(
+      studentId,
+      [
+        schoolId,
+        ...memberships.map((item) => item.schoolId),
+      ],
+    );
 
     return {
       message: 'Student updated successfully',
@@ -117,7 +181,7 @@ export class StudentService {
   }
 
   // ==========================================
-  // DELETE STUDENT
+  // DELETE STUDENT PROFILE
   // ==========================================
 
   async remove(
@@ -130,14 +194,13 @@ export class StudentService {
     const membershipRepository =
       this.dataSource.getRepository(SchoolMembership);
 
-    // Verify school membership
-    const membership =
-      await membershipRepository.findOne({
-        where: {
-          userId: studentId,
-          schoolId,
-        },
-      });
+    const membership = await membershipRepository.findOne({
+      where: {
+        userId: studentId,
+        schoolId,
+        role: UserRole.STUDENT,
+      },
+    });
 
     if (!membership) {
       throw new NotFoundException(
@@ -146,21 +209,29 @@ export class StudentService {
     }
 
     const student = await studentRepository.findOne({
-      where: {
-        id: studentId,
-      },
+      where: { id: studentId },
     });
 
     if (!student) {
-      throw new NotFoundException(
-        'Student not found',
-      );
+      throw new NotFoundException('Student not found');
     }
+
+    const memberships = await membershipRepository.find({
+      where: { userId: studentId },
+    });
 
     await studentRepository.remove(student);
 
+    await this.invalidateStudentCaches(
+      studentId,
+      [
+        schoolId,
+        ...memberships.map((item) => item.schoolId),
+      ],
+    );
+
     return {
-      message: 'Student deleted successfully',
+      message: 'Student profile deleted successfully',
       studentId,
     };
   }
@@ -169,37 +240,35 @@ export class StudentService {
   // FIND ALL STUDENTS IN SCHOOL
   // ==========================================
 
-  async findBySchool(
-    schoolId: string,
-  ) {
-    const membershipRepository =
-      this.dataSource.getRepository(SchoolMembership);
+  async findBySchool(schoolId: string): Promise<Student[]> {
+    return this.getOrSetCache(
+      this.getSchoolStudentsCacheKey(schoolId),
+      async () => {
+        const studentRepository =
+          this.dataSource.getRepository(Student);
 
-    const studentRepository =
-      this.dataSource.getRepository(Student);
+        const membershipRepository =
+          this.dataSource.getRepository(SchoolMembership);
 
-    const memberships =
-      await membershipRepository.find({
-        where: {
-          schoolId,
-          role: UserRole.STUDENT,
-        },
-      });
+        // Use a subquery rather than loading all membership IDs
+        // into application memory.
+        const studentIdsQuery = membershipRepository
+          .createQueryBuilder('membership')
+          .select('membership.userId')
+          .where('membership.schoolId = :schoolId', {
+            schoolId,
+          })
+          .andWhere('membership.role = :role', {
+            role: UserRole.STUDENT,
+          });
 
-    const studentIds = memberships.map(
-      (membership) => membership.userId,
+        return studentRepository
+          .createQueryBuilder('student')
+          .where(`student.id IN (${studentIdsQuery.getQuery()})`)
+          .setParameters(studentIdsQuery.getParameters())
+          .getMany();
+      },
     );
-
-    if (studentIds.length === 0) {
-      return [];
-    }
-
-    return studentRepository
-      .createQueryBuilder('student')
-      .where('student.id IN (:...studentIds)', {
-        studentIds,
-      })
-      .getMany();
   }
 
   // ==========================================
@@ -210,9 +279,7 @@ export class StudentService {
     schoolId: string,
     classId: string,
   ) {
-    // We will implement this after looking
-    // at your Enrollment entity.
-
+    // Implement after reviewing the Enrollment entity.
     throw new Error(
       'findByClass() requires the Enrollment entity structure',
     );

@@ -1,7 +1,8 @@
+
 import { Module } from '@nestjs/common';
 import { createObserveModule } from '@nestjs/observe';
 import { ConfigModule } from '@nestjs/config';
-import {TypeOrmModule} from '@nestjs/typeorm';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 
 // Modules
@@ -24,12 +25,15 @@ import { SubjectModule } from './modules/subject/subject.module.js';
 import { HeadTeacherAssignmentModule } from './modules/head-teacher-assignment/head-teacher-assignment.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { SchoolMembershipModule } from './modules/school-membership/school-membership.module.js';
-import {SchoolModule} from './modules/school/school.module.js'
+import { SchoolModule } from './modules/school/school.module.js'
+import { RedisModule } from './redis/redis.module.js';
+import { RedisService } from './redis/redis.service.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
   imports: [
+    RedisModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -72,6 +76,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     SchoolMembershipModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    RedisService, AppService],
 })
-export class AppModule {}
+export class AppModule { }

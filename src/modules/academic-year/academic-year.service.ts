@@ -1,113 +1,91 @@
+
 import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { AcademicYear } from './entities/academic-year.entity.js';
 import { CreateAcademicYearDto } from './dto/create-academic-year.dto.js';
 import { UpdateAcademicYearDto } from './dto/update-academic-year.dto.js';
-
 import { School } from '../school/entities/school.entity.js';
+import { RedisService } from '../../redis/redis.service.js';
+
+interface CachedAcademicYear {
+  id: string;
+  name: string;
+  schoolId: string;
+  startDate: string;
+  endDate: string;
+}
 
 @Injectable()
 export class AcademicYearService {
+  private readonly logger = new Logger(AcademicYearService.name);
+
+  private readonly CURRENT_YEAR_TTL_SECONDS = 60;
+
   constructor(
     @InjectRepository(AcademicYear)
     private readonly academicYearRepository: Repository<AcademicYear>,
 
     @InjectRepository(School)
     private readonly schoolRepository: Repository<School>,
+
+    private readonly redisService: RedisService,
   ) {}
 
-  // --------------------------------------------------
-  // CREATE
-  // --------------------------------------------------
-
-  async create(
-    schoolId: string,
-    dto: CreateAcademicYearDto,
-  ) {
-    // 1. Verify school
+  async create(schoolId: string, dto: CreateAcademicYearDto) {
     await this.verifySchool(schoolId);
+    this.validateDates(dto.startDate, dto.endDate);
 
-    // 2. Validate dates
-    this.validateDates(
-      dto.startDate,
-      dto.endDate,
-    );
+    const existing = await this.academicYearRepository.findOne({
+      where: { schoolId, name: dto.name },
+    });
 
-    // 3. Prevent duplicate academic year
-    const existingAcademicYear =
-      await this.academicYearRepository.findOne({
-        where: {
-          schoolId,
-          name: dto.name,
-        },
-      });
-
-    if (existingAcademicYear) {
+    if (existing) {
       throw new ConflictException(
         'An academic year with this name already exists in this school',
       );
     }
 
-    // 4. Create
-    const academicYear =
-      this.academicYearRepository.create({
-        name: dto.name,
-        startDate: new Date(dto.startDate),
-        endDate: new Date(dto.endDate),
-        schoolId,
-      });
+    const academicYear = this.academicYearRepository.create({
+      name: dto.name,
+      startDate: new Date(dto.startDate),
+      endDate: new Date(dto.endDate),
+      schoolId,
+    });
 
-    return this.academicYearRepository.save(
-      academicYear,
-    );
+    const saved = await this.academicYearRepository.save(academicYear);
+
+    // Invalidate only after the database write succeeds.
+    await this.invalidateCurrentYear(schoolId);
+
+    return saved;
   }
-
-  // --------------------------------------------------
-  // FIND ALL
-  // --------------------------------------------------
 
   async findAll(schoolId: string) {
     await this.verifySchool(schoolId);
 
     return this.academicYearRepository.find({
-      where: {
-        schoolId,
-      },
-      relations: {
-        school: true,
-      },
-      order: {
-        startDate: 'DESC',
-      },
+      where: { schoolId },
+      relations: { school: true },
+      order: { startDate: 'DESC' },
     });
   }
 
-  // --------------------------------------------------
-  // FIND ONE
-  // --------------------------------------------------
-
-  async findOne(
-    schoolId: string,
-    academicYearId: string,
-  ) {
-    const academicYear =
-      await this.academicYearRepository.findOne({
-        where: {
-          id: academicYearId,
-          schoolId,
-        },
-        relations: {
-          school: true,
-        },
-      });
+  async findOne(schoolId: string, academicYearId: string) {
+    const academicYear = await this.academicYearRepository.findOne({
+      where: {
+        id: academicYearId,
+        schoolId,
+      },
+      relations: { school: true },
+    });
 
     if (!academicYear) {
       throw new NotFoundException(
@@ -118,156 +96,146 @@ export class AcademicYearService {
     return academicYear;
   }
 
-  // --------------------------------------------------
-  // FIND CURRENT
-  // --------------------------------------------------
-
-  async findCurrent(schoolId: string) {
+  async findCurrent(schoolId: string): Promise<AcademicYear> {
     await this.verifySchool(schoolId);
 
+    const cacheKey = this.currentYearKey(schoolId);
+
+    // 1. Try Redis first.
+    const cached =
+      await this.redisService.getJson<CachedAcademicYear>(cacheKey);
+
+    if (cached) {
+      // JSON parsing does not restore JavaScript Date objects.
+      // Rehydrate dates so cache hits match database hits.
+      return Object.assign(new AcademicYear(), cached, {
+        startDate: new Date(cached.startDate),
+        endDate: new Date(cached.endDate),
+      });
+    }
+
+    // 2. Cache miss: PostgreSQL is the source of truth.
     const today = new Date();
 
-    const academicYear =
-      await this.academicYearRepository
-        .createQueryBuilder('academicYear')
-        .where(
-          'academicYear.schoolId = :schoolId',
-          { schoolId },
-        )
-        .andWhere(
-          'academicYear.startDate <= :today',
-          { today },
-        )
-        .andWhere(
-          'academicYear.endDate >= :today',
-          { today },
-        )
-        .getOne();
+    const academicYear = await this.academicYearRepository
+      .createQueryBuilder('academicYear')
+      .where('academicYear.schoolId = :schoolId', { schoolId })
+      .andWhere('academicYear.startDate <= :today', { today })
+      .andWhere('academicYear.endDate >= :today', { today })
+      .getOne();
 
     if (!academicYear) {
+      // We do not cache this absence in the initial implementation.
       throw new NotFoundException(
         'No current academic year found for this school',
       );
     }
 
+    // 3. Populate Redis. A failed write must not fail the request.
+    const cacheValue: CachedAcademicYear = {
+      id: academicYear.id,
+      name: academicYear.name,
+      schoolId: academicYear.schoolId,
+      startDate: academicYear.startDate.toISOString(),
+      endDate: academicYear.endDate.toISOString(),
+    };
+
+    await this.redisService.setJson(
+      cacheKey,
+      cacheValue,
+      this.CURRENT_YEAR_TTL_SECONDS,
+    );
+
     return academicYear;
   }
-
-  // --------------------------------------------------
-  // UPDATE
-  // --------------------------------------------------
 
   async update(
     schoolId: string,
     academicYearId: string,
     dto: UpdateAcademicYearDto,
   ) {
-    const academicYear =
-      await this.findOne(
-        schoolId,
-        academicYearId,
-      );
-
-    const name =
-      dto.name ?? academicYear.name;
-
-    const startDate =
-      dto.startDate ??
-      academicYear.startDate.toISOString();
-
-    const endDate =
-      dto.endDate ??
-      academicYear.endDate.toISOString();
-
-    // 1. Validate dates
-    this.validateDates(
-      startDate,
-      endDate,
+    const academicYear = await this.findOne(
+      schoolId,
+      academicYearId,
     );
 
-    // 2. Check duplicate name
-    if (name !== academicYear.name) {
-      const existingAcademicYear =
-        await this.academicYearRepository.findOne({
-          where: {
-            schoolId,
-            name,
-          },
-        });
+    const name = dto.name ?? academicYear.name;
 
-      if (
-        existingAcademicYear &&
-        existingAcademicYear.id !== academicYear.id
-      ) {
+    const startDate =
+      dto.startDate ?? academicYear.startDate.toISOString();
+
+    const endDate =
+      dto.endDate ?? academicYear.endDate.toISOString();
+
+    this.validateDates(startDate, endDate);
+
+    if (name !== academicYear.name) {
+      const existing = await this.academicYearRepository.findOne({
+        where: { schoolId, name },
+      });
+
+      if (existing && existing.id !== academicYear.id) {
         throw new ConflictException(
           'An academic year with this name already exists in this school',
         );
       }
     }
 
-    // 3. Apply changes
     academicYear.name = name;
-    academicYear.startDate =
-      new Date(startDate);
-    academicYear.endDate =
-      new Date(endDate);
+    academicYear.startDate = new Date(startDate);
+    academicYear.endDate = new Date(endDate);
 
-    return this.academicYearRepository.save(
-      academicYear,
-    );
+    const saved = await this.academicYearRepository.save(academicYear);
+
+    await this.invalidateCurrentYear(schoolId);
+
+    return saved;
   }
 
-  // --------------------------------------------------
-  // DELETE
-  // --------------------------------------------------
+  async remove(schoolId: string, academicYearId: string) {
+    const academicYear = await this.findOne(
+      schoolId,
+      academicYearId,
+    );
 
-  async remove(
+    await this.academicYearRepository.remove(academicYear);
+
+    await this.invalidateCurrentYear(schoolId);
+
+    return { message: 'Academic year deleted successfully' };
+  }
+
+  private currentYearKey(schoolId: string): string {
+    return `school:${schoolId}:academic-year:current`;
+  }
+
+  private async invalidateCurrentYear(
     schoolId: string,
-    academicYearId: string,
-  ) {
-    const academicYear =
-      await this.findOne(
-        schoolId,
-        academicYearId,
+  ): Promise<void> {
+    const deleted = await this.redisService.delete(
+      this.currentYearKey(schoolId),
+    );
+
+    if (!deleted) {
+      this.logger.warn(
+        `Could not invalidate current academic year cache for school ${schoolId}`,
       );
-
-    await this.academicYearRepository.remove(
-      academicYear,
-    );
-
-    return {
-      message:
-        'Academic year deleted successfully',
-    };
+    }
   }
 
-  // --------------------------------------------------
-  // HELPERS
-  // --------------------------------------------------
-
-  private async verifySchool(
-    schoolId: string,
-  ) {
-    const school =
-      await this.schoolRepository.findOne({
-        where: {
-          id: schoolId,
-        },
-      });
+  private async verifySchool(schoolId: string): Promise<School> {
+    const school = await this.schoolRepository.findOne({
+      where: { id: schoolId },
+    });
 
     if (!school) {
-      throw new NotFoundException(
-        'School not found',
-      );
+      throw new NotFoundException('School not found');
     }
 
     return school;
   }
 
-  private validateDates(
-    startDate: string,
-    endDate: string,
-  ) {
+  private validateDates(startDate: string, endDate: string): void {
     const start = new Date(startDate);
     const end = new Date(endDate);
 
@@ -275,9 +243,7 @@ export class AcademicYearService {
       Number.isNaN(start.getTime()) ||
       Number.isNaN(end.getTime())
     ) {
-      throw new BadRequestException(
-        'Invalid academic year dates',
-      );
+      throw new BadRequestException('Invalid academic year dates');
     }
 
     if (end <= start) {

@@ -3,7 +3,6 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -15,8 +14,12 @@ import { Term } from '../term/entities/term.entity.js';
 import { CreateEventDto } from './dto/create-event.dto.js';
 import { UpdateEventDto } from './dto/update-event.dto.js';
 
+import { RedisService } from '../../redis/redis.service.js';
+
 @Injectable()
 export class EventService {
+  private readonly CACHE_TTL = 60;
+
   constructor(
     @InjectRepository(Event)
     private readonly eventRepository: Repository<Event>,
@@ -29,83 +32,129 @@ export class EventService {
 
     @InjectRepository(Term)
     private readonly termRepository: Repository<Term>,
+
+    private readonly redisService: RedisService,
   ) {}
+
+  // ==========================================
+  // CACHE KEYS
+  // ==========================================
+
+  private getSchoolEventsKey(schoolId: string): string {
+    return `school:${schoolId}:events:all`;
+  }
+
+  private getEventKey(
+    schoolId: string,
+    eventId: string,
+  ): string {
+    return `school:${schoolId}:event:${eventId}`;
+  }
+
+  private getAcademicYearEventsKey(
+    schoolId: string,
+    academicYearId: string,
+  ): string {
+    return `school:${schoolId}:academic-year:${academicYearId}:events`;
+  }
+
+  private getAcademicYearTermEventsKey(
+    schoolId: string,
+    academicYearId: string,
+    termId: string,
+  ): string {
+    return `school:${schoolId}:academic-year:${academicYearId}:term:${termId}:events`;
+  }
+
+  // ==========================================
+  // CACHE INVALIDATION
+  // ==========================================
+
+  private async invalidateEventCache(
+    schoolId: string,
+    eventId?: string,
+    academicYearIds: (string | undefined)[] = [],
+    termPairs: {
+      academicYearId: string;
+      termId: string;
+    }[] = [],
+  ): Promise<void> {
+    const keys = new Set<string>([
+      this.getSchoolEventsKey(schoolId),
+    ]);
+
+    if (eventId) {
+      keys.add(this.getEventKey(schoolId, eventId));
+    }
+
+    for (const academicYearId of academicYearIds) {
+      if (academicYearId) {
+        keys.add(
+          this.getAcademicYearEventsKey(
+            schoolId,
+            academicYearId,
+          ),
+        );
+      }
+    }
+
+    for (const pair of termPairs) {
+      keys.add(
+        this.getAcademicYearTermEventsKey(
+          schoolId,
+          pair.academicYearId,
+          pair.termId,
+        ),
+      );
+    }
+
+    await Promise.all(
+      [...keys].map((key) => this.redisService.delete(key)),
+    );
+  }
 
   // ==========================================
   // CREATE
   // ==========================================
 
-  async create(
-    schoolId: string,
-    dto: CreateEventDto,
-  ) {
-    // ------------------------------------------
-    // Validate dates
-    // ------------------------------------------
-
+  async create(schoolId: string, dto: CreateEventDto) {
     const startsAt = new Date(dto.startsAt);
     const endsAt = new Date(dto.endsAt);
 
-    if (endsAt <= startsAt) {
+    if (
+      Number.isNaN(startsAt.getTime()) ||
+      Number.isNaN(endsAt.getTime()) ||
+      endsAt <= startsAt
+    ) {
       throw new BadRequestException(
         'Event end time must be after start time',
       );
     }
 
-    // ------------------------------------------
-    // Verify school
-    // ------------------------------------------
-
-    const school =
-      await this.schoolRepository.findOne({
-        where: {
-          id: schoolId,
-        },
-      });
+    const school = await this.schoolRepository.findOne({
+      where: { id: schoolId },
+    });
 
     if (!school) {
-      throw new NotFoundException(
-        'School not found',
-      );
+      throw new NotFoundException('School not found');
     }
-
-    // ------------------------------------------
-    // Verify academic year
-    // ------------------------------------------
 
     const academicYear =
       await this.academicYearRepository.findOne({
-        where: {
-          id: dto.academicYearId,
-        },
+        where: { id: dto.academicYearId },
       });
 
     if (!academicYear) {
-      throw new NotFoundException(
-        'Academic year not found',
-      );
+      throw new NotFoundException('Academic year not found');
     }
 
-    // ------------------------------------------
-    // Verify term
-    // ------------------------------------------
-
-    const term =
-      await this.termRepository.findOne({
-        where: {
-          id: dto.termId,
-        },
-      });
+    const term = await this.termRepository.findOne({
+      where: { id: dto.termId },
+    });
 
     if (!term) {
-      throw new NotFoundException(
-        'Term not found',
-      );
+      throw new NotFoundException('Term not found');
     }
-
-    // ------------------------------------------
-    // Create event
-    // ------------------------------------------
 
     const event = this.eventRepository.create({
       eventName: dto.eventName,
@@ -118,7 +167,21 @@ export class EventService {
       schoolId,
     });
 
-    return this.eventRepository.save(event);
+    const savedEvent = await this.eventRepository.save(event);
+
+    await this.invalidateEventCache(
+      schoolId,
+      savedEvent.id,
+      [savedEvent.academicYearId],
+      [
+        {
+          academicYearId: savedEvent.academicYearId,
+          termId: savedEvent.termId,
+        },
+      ],
+    );
+
+    return savedEvent;
   }
 
   // ==========================================
@@ -126,10 +189,17 @@ export class EventService {
   // ==========================================
 
   async findAll(schoolId: string) {
-    return this.eventRepository.find({
-      where: {
-        schoolId,
-      },
+    const cacheKey = this.getSchoolEventsKey(schoolId);
+
+    const cachedEvents =
+      await this.redisService.getJson<Event[]>(cacheKey);
+
+    if (cachedEvents !== null) {
+      return cachedEvents;
+    }
+
+    const events = await this.eventRepository.find({
+      where: { schoolId },
       relations: {
         academicYear: true,
         term: true,
@@ -138,34 +208,53 @@ export class EventService {
         startsAt: 'ASC',
       },
     });
+
+    await this.redisService.setJson(
+      cacheKey,
+      events,
+      this.CACHE_TTL,
+    );
+
+    return events;
   }
 
   // ==========================================
-  // FIND ONE
+  // FIND ONE — EVENT METADATA
   // ==========================================
 
-  async findOne(
-    schoolId: string,
-    eventId: string,
-  ) {
-    const event =
-      await this.eventRepository.findOne({
-        where: {
-          id: eventId,
-          schoolId,
-        },
-        relations: {
-          academicYear: true,
-          term: true,
-          school: true,
-        },
-      });
+  async findOne(schoolId: string, eventId: string) {
+    const cacheKey = this.getEventKey(schoolId, eventId);
+
+    const cachedEvent =
+      await this.redisService.getJson<Event>(cacheKey);
+
+    if (cachedEvent !== null) {
+      return cachedEvent;
+    }
+
+    const event = await this.eventRepository.findOne({
+      where: {
+        id: eventId,
+        schoolId,
+      },
+      relations: {
+        academicYear: true,
+        term: true,
+        school: true,
+      },
+    });
 
     if (!event) {
       throw new NotFoundException(
         'Event not found in this school',
       );
     }
+
+    await this.redisService.setJson(
+      cacheKey,
+      event,
+      this.CACHE_TTL,
+    );
 
     return event;
   }
@@ -178,11 +267,21 @@ export class EventService {
     schoolId: string,
     academicYearId: string,
   ) {
-    await this.verifyAcademicYear(
+    await this.verifyAcademicYear(academicYearId);
+
+    const cacheKey = this.getAcademicYearEventsKey(
+      schoolId,
       academicYearId,
     );
 
-    return this.eventRepository.find({
+    const cachedEvents =
+      await this.redisService.getJson<Event[]>(cacheKey);
+
+    if (cachedEvents !== null) {
+      return cachedEvents;
+    }
+
+    const events = await this.eventRepository.find({
       where: {
         schoolId,
         academicYearId,
@@ -195,6 +294,14 @@ export class EventService {
         startsAt: 'ASC',
       },
     });
+
+    await this.redisService.setJson(
+      cacheKey,
+      events,
+      this.CACHE_TTL,
+    );
+
+    return events;
   }
 
   // ==========================================
@@ -206,13 +313,23 @@ export class EventService {
     academicYearId: string,
     termId: string,
   ) {
-    await this.verifyAcademicYear(
-      academicYearId,
-    );
-
+    await this.verifyAcademicYear(academicYearId);
     await this.verifyTerm(termId);
 
-    return this.eventRepository.find({
+    const cacheKey = this.getAcademicYearTermEventsKey(
+      schoolId,
+      academicYearId,
+      termId,
+    );
+
+    const cachedEvents =
+      await this.redisService.getJson<Event[]>(cacheKey);
+
+    if (cachedEvents !== null) {
+      return cachedEvents;
+    }
+
+    const events = await this.eventRepository.find({
       where: {
         schoolId,
         academicYearId,
@@ -226,6 +343,14 @@ export class EventService {
         startsAt: 'ASC',
       },
     });
+
+    await this.redisService.setJson(
+      cacheKey,
+      events,
+      this.CACHE_TTL,
+    );
+
+    return events;
   }
 
   // ==========================================
@@ -237,32 +362,28 @@ export class EventService {
     eventId: string,
     dto: UpdateEventDto,
   ) {
-    const event = await this.findOne(
-      schoolId,
-      eventId,
-    );
+    const event = await this.findOne(schoolId, eventId);
 
-    // ------------------------------------------
-    // Validate new dates if supplied
-    // ------------------------------------------
+    const oldAcademicYearId = event.academicYearId;
+    const oldTermId = event.termId;
 
     const newStartsAt = dto.startsAt
       ? new Date(dto.startsAt)
-      : event.startsAt;
+      : new Date(event.startsAt);
 
     const newEndsAt = dto.endsAt
       ? new Date(dto.endsAt)
-      : event.endsAt;
+      : new Date(event.endsAt);
 
-    if (newEndsAt <= newStartsAt) {
+    if (
+      Number.isNaN(newStartsAt.getTime()) ||
+      Number.isNaN(newEndsAt.getTime()) ||
+      newEndsAt <= newStartsAt
+    ) {
       throw new BadRequestException(
         'Event end time must be after start time',
       );
     }
-
-    // ------------------------------------------
-    // Update
-    // ------------------------------------------
 
     Object.assign(event, {
       ...dto,
@@ -270,23 +391,55 @@ export class EventService {
       endsAt: newEndsAt,
     });
 
-    return this.eventRepository.save(event);
+    const updatedEvent =
+      await this.eventRepository.save(event);
+
+    await this.invalidateEventCache(
+      schoolId,
+      eventId,
+      [
+        oldAcademicYearId,
+        updatedEvent.academicYearId,
+      ],
+      [
+        ...(oldAcademicYearId && oldTermId
+          ? [{
+              academicYearId: oldAcademicYearId,
+              termId: oldTermId,
+            }]
+          : []),
+        ...(updatedEvent.academicYearId && updatedEvent.termId
+          ? [{
+              academicYearId: updatedEvent.academicYearId,
+              termId: updatedEvent.termId,
+            }]
+          : []),
+      ],
+    );
+
+    return updatedEvent;
   }
 
   // ==========================================
   // DELETE
   // ==========================================
 
-  async remove(
-    schoolId: string,
-    eventId: string,
-  ) {
-    const event = await this.findOne(
-      schoolId,
-      eventId,
-    );
+  async remove(schoolId: string, eventId: string) {
+    const event = await this.findOne(schoolId, eventId);
 
     await this.eventRepository.remove(event);
+
+    await this.invalidateEventCache(
+      schoolId,
+      eventId,
+      [event.academicYearId],
+      event.academicYearId && event.termId
+        ? [{
+            academicYearId: event.academicYearId,
+            termId: event.termId,
+          }]
+        : [],
+    );
 
     return {
       message: 'Event deleted successfully',
@@ -302,9 +455,7 @@ export class EventService {
   ) {
     const academicYear =
       await this.academicYearRepository.findOne({
-        where: {
-          id: academicYearId,
-        },
+        where: { id: academicYearId },
       });
 
     if (!academicYear) {
@@ -316,20 +467,13 @@ export class EventService {
     return academicYear;
   }
 
-  private async verifyTerm(
-    termId: string,
-  ) {
-    const term =
-      await this.termRepository.findOne({
-        where: {
-          id: termId,
-        },
-      });
+  private async verifyTerm(termId: string) {
+    const term = await this.termRepository.findOne({
+      where: { id: termId },
+    });
 
     if (!term) {
-      throw new NotFoundException(
-        'Term not found',
-      );
+      throw new NotFoundException('Term not found');
     }
 
     return term;

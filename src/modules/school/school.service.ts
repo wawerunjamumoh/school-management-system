@@ -2,46 +2,53 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  Inject,
-  forwardRef,
 } from '@nestjs/common';
-
-import { DataSource, Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 import { School } from './entities/school.entity.js';
 import { CreateSchoolDto } from './dto/create-school.dto.js';
 import { UpdateSchoolDto } from './dto/update-school.dto.js';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ClassService } from '../class/class.service.js';
+import { RedisService } from '../../redis/redis.service.js';
 
 @Injectable()
 export class SchoolService {
+  private readonly CACHE_TTL = 60;
+
   constructor(
-    private readonly dataSource: DataSource,
-    @InjectRepository(School) private schoolRepository: Repository<School>,
+    @InjectRepository(School)
+    private readonly schoolRepository: Repository<School>,
+
+    private readonly redisService: RedisService,
   ) {}
 
-  // =========================
+  // ==========================================
+  // CACHE KEY
+  // ==========================================
+
+  private getProfileCacheKey(schoolId: string): string {
+    return `school:${schoolId}:profile`;
+  }
+
+  // ==========================================
   // CREATE SCHOOL
-  // =========================
+  // ==========================================
 
   async create(dto: CreateSchoolDto) {
-    const schoolRepository = this.dataSource.getRepository(School);
-
-    // Check whether school already exists
-    const existingSchool = await schoolRepository.findOne({
+    const existingSchool = await this.schoolRepository.findOne({
       where: {
         schoolName: dto.schoolName,
       },
     });
 
     if (existingSchool) {
-      throw new BadRequestException('A school with this name already exists');
+      throw new BadRequestException(
+        'A school with this name already exists',
+      );
     }
 
-    const school = schoolRepository.create(dto);
-
-    const savedSchool = await schoolRepository.save(school);
+    const school = this.schoolRepository.create(dto);
+    const savedSchool = await this.schoolRepository.save(school);
 
     return {
       message: 'School created successfully',
@@ -49,24 +56,29 @@ export class SchoolService {
     };
   }
 
-  // =========================
+  // ==========================================
   // FIND ALL SCHOOLS
-  // =========================
+  // ==========================================
 
   async findAll() {
-    const schoolRepository = this.dataSource.getRepository(School);
-
-    return schoolRepository.find();
+    return this.schoolRepository.find();
   }
 
-  // =========================
-  // FIND ONE SCHOOL
-  // =========================
+  // ==========================================
+  // FIND ONE SCHOOL — PROFILE METADATA
+  // ==========================================
 
   async findOne(id: string) {
-    const schoolRepository = this.dataSource.getRepository(School);
+    const cacheKey = this.getProfileCacheKey(id);
 
-    const school = await schoolRepository.findOne({
+    const cachedSchool =
+      await this.redisService.getJson<School>(cacheKey);
+
+    if (cachedSchool !== null) {
+      return cachedSchool;
+    }
+
+    const school = await this.schoolRepository.findOne({
       where: { id },
     });
 
@@ -74,17 +86,22 @@ export class SchoolService {
       throw new NotFoundException('School not found');
     }
 
+    await this.redisService.setJson(
+      cacheKey,
+      school,
+      this.CACHE_TTL,
+    );
+
     return school;
   }
 
-  // =========================
+  // ==========================================
   // UPDATE SCHOOL
-  // =========================
+  // ==========================================
 
   async update(id: string, dto: UpdateSchoolDto) {
-    const schoolRepository = this.dataSource.getRepository(School);
-
-    const school = await schoolRepository.findOne({
+    // Read from the database rather than the cache before writing.
+    const school = await this.schoolRepository.findOne({
       where: { id },
     });
 
@@ -94,7 +111,9 @@ export class SchoolService {
 
     Object.assign(school, dto);
 
-    const updatedSchool = await schoolRepository.save(school);
+    const updatedSchool = await this.schoolRepository.save(school);
+
+    await this.redisService.delete(this.getProfileCacheKey(id));
 
     return {
       message: 'School updated successfully',
@@ -102,14 +121,12 @@ export class SchoolService {
     };
   }
 
-  // =========================
+  // ==========================================
   // DELETE SCHOOL
-  // =========================
+  // ==========================================
 
   async remove(id: string) {
-    const schoolRepository = this.dataSource.getRepository(School);
-
-    const school = await schoolRepository.findOne({
+    const school = await this.schoolRepository.findOne({
       where: { id },
     });
 
@@ -117,7 +134,9 @@ export class SchoolService {
       throw new NotFoundException('School not found');
     }
 
-    await schoolRepository.remove(school);
+    await this.schoolRepository.remove(school);
+
+    await this.redisService.delete(this.getProfileCacheKey(id));
 
     return {
       message: 'School deleted successfully',
@@ -125,14 +144,12 @@ export class SchoolService {
     };
   }
 
-  // =========================
+  // ==========================================
   // FIND BY LOCATION
-  // =========================
+  // ==========================================
 
   async findByLocation(location: string) {
-    const schoolRepository = this.dataSource.getRepository(School);
-
-    return schoolRepository
+    return this.schoolRepository
       .createQueryBuilder('school')
       .where('LOWER(school.location) LIKE LOWER(:location)', {
         location: `%${location}%`,

@@ -1,0 +1,12 @@
+Data -	Cache priority -	Reason
+Current academic year -	High	- Read often, changes infrequently
+Terms and academic-year metadata	High	Relatively stable reference data
+School subjects	High	Usually read much more often than edited
+Class lists and class metadata	Medium–high	Useful for repeated dashboard requests
+School events and notice boards	Medium–high	Good candidates if updates are infrequent
+School profile and public metadata	Medium–high	Often reused across pages
+Teaching assignments	Medium	Cache only after measuring usage and handling updates
+Student profiles	Low initially	Personal data and permission-sensitive
+Exam results	Low initially	Sensitive, may change after corrections
+Guardian–student relationships	Avoid initially	Sensitive relationships require strict authorization
+Login, refresh tokens, permissions	Avoid generic caching	Authentication and authorization need careful handling

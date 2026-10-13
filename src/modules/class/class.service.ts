@@ -2,62 +2,78 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
-  Inject,
-  forwardRef,
 } from '@nestjs/common';
-
-import { DataSource, Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 import { Class } from './entities/class.entity.js';
 import { School } from '../school/entities/school.entity.js';
-
 import { CreateClassDto } from './dto/create-class.dto.js';
 import { UpdateClassDto } from './dto/update-class.dto.js';
-import { InjectRepository } from '@nestjs/typeorm';
-import { SchoolService } from '../school/school.service.js';
+import { RedisService } from '../../redis/redis.service.js';
 
 @Injectable()
 export class ClassService {
+  private readonly CACHE_TTL = 60;
+
   constructor(
-    private readonly dataSource: DataSource,
-    @InjectRepository(Class) private classRepository: Repository<Class>,
-    @InjectRepository(School) private SchoolRepository: Repository<School>,
+    @InjectRepository(Class)
+    private readonly classRepository: Repository<Class>,
+
+    @InjectRepository(School)
+    private readonly schoolRepository: Repository<School>,
+
+    private readonly redisService: RedisService,
   ) {}
+
+  // Cache keys are scoped to a school.
+  private getClassListKey(schoolId: string): string {
+    return `school:${schoolId}:classes:all`;
+  }
+
+  private getClassKey(
+    schoolId: string,
+    classId: string,
+  ): string {
+    return `school:${schoolId}:class:${classId}`;
+  }
+
+  // Invalidate only after a successful database mutation.
+  private async invalidateClassCache(
+    schoolId: string,
+    classId?: string,
+  ): Promise<void> {
+    const keys = [this.getClassListKey(schoolId)];
+
+    if (classId) {
+      keys.push(this.getClassKey(schoolId, classId));
+    }
+
+    await Promise.all(
+      keys.map((key) => this.redisService.delete(key)),
+    );
+  }
 
   // ==========================================
   // CREATE CLASS
   // ==========================================
 
-  async create(
-    schoolId: string,
-    dto: CreateClassDto,
-  ) {
-    const classRepository =
-      this.dataSource.getRepository(Class);
-
-    const schoolRepository =
-      this.dataSource.getRepository(School);
-
-    // 1. Make sure the school exists
-    const school = await schoolRepository.findOne({
-      where: {
-        id: schoolId,
-      },
+  async create(schoolId: string, dto: CreateClassDto) {
+    const school = await this.schoolRepository.findOne({
+      where: { id: schoolId },
     });
 
     if (!school) {
       throw new NotFoundException('School not found');
     }
 
-    // 2. Validate capacity
     if (dto.capacity <= 0) {
       throw new BadRequestException(
         'Class capacity must be greater than zero',
       );
     }
 
-    // 3. Prevent duplicate class
-    const existingClass = await classRepository.findOne({
+    const existingClass = await this.classRepository.findOne({
       where: {
         schoolId,
         className: dto.className,
@@ -72,8 +88,7 @@ export class ClassService {
       );
     }
 
-    // 4. Create class
-    const newClass = classRepository.create({
+    const newClass = this.classRepository.create({
       schoolId,
       className: dto.className,
       capacity: dto.capacity,
@@ -81,8 +96,9 @@ export class ClassService {
       stream: dto.stream,
     });
 
-    const savedClass =
-      await classRepository.save(newClass);
+    const savedClass = await this.classRepository.save(newClass);
+
+    await this.invalidateClassCache(schoolId, savedClass.id);
 
     return {
       message: 'Class created successfully',
@@ -91,51 +107,60 @@ export class ClassService {
   }
 
   // ==========================================
-  // FIND ALL CLASSES FOR SCHOOL
+  // FIND ALL CLASSES FOR A SCHOOL
   // ==========================================
 
   async findBySchool(schoolId: string) {
-    const schoolRepository =
-      this.dataSource.getRepository(School);
-
-    const classRepository =
-      this.dataSource.getRepository(Class);
-
-    // Make sure school exists
-    const school = await schoolRepository.findOne({
-      where: {
-        id: schoolId,
-      },
+    const school = await this.schoolRepository.findOne({
+      where: { id: schoolId },
     });
 
     if (!school) {
       throw new NotFoundException('School not found');
     }
 
-    return classRepository.find({
-      where: {
-        schoolId,
-      },
+    const cacheKey = this.getClassListKey(schoolId);
+
+    const cachedClasses =
+      await this.redisService.getJson<Class[]>(cacheKey);
+
+    if (cachedClasses !== null) {
+      return cachedClasses;
+    }
+
+    const classes = await this.classRepository.find({
+      where: { schoolId },
       order: {
         level: 'ASC',
         className: 'ASC',
         stream: 'ASC',
       },
     });
+
+    await this.redisService.setJson(
+      cacheKey,
+      classes,
+      this.CACHE_TTL,
+    );
+
+    return classes;
   }
 
   // ==========================================
-  // FIND ONE CLASS
+  // FIND ONE CLASS — METADATA
   // ==========================================
 
-  async findOne(
-    schoolId: string,
-    classId: string,
-  ) {
-    const classRepository =
-      this.dataSource.getRepository(Class);
+  async findOne(schoolId: string, classId: string) {
+    const cacheKey = this.getClassKey(schoolId, classId);
 
-    const schoolClass = await classRepository.findOne({
+    const cachedClass =
+      await this.redisService.getJson<Class>(cacheKey);
+
+    if (cachedClass !== null) {
+      return cachedClass;
+    }
+
+    const schoolClass = await this.classRepository.findOne({
       where: {
         id: classId,
         schoolId,
@@ -151,6 +176,12 @@ export class ClassService {
       );
     }
 
+    await this.redisService.setJson(
+      cacheKey,
+      schoolClass,
+      this.CACHE_TTL,
+    );
+
     return schoolClass;
   }
 
@@ -163,11 +194,7 @@ export class ClassService {
     classId: string,
     dto: UpdateClassDto,
   ) {
-    const classRepository =
-      this.dataSource.getRepository(Class);
-
-    // Find class belonging to this school
-    const schoolClass = await classRepository.findOne({
+    const schoolClass = await this.classRepository.findOne({
       where: {
         id: classId,
         schoolId,
@@ -180,7 +207,6 @@ export class ClassService {
       );
     }
 
-    // Validate capacity if provided
     if (
       dto.capacity !== undefined &&
       dto.capacity <= 0
@@ -190,24 +216,20 @@ export class ClassService {
       );
     }
 
-    // Check duplicate if identifying fields are changing
-    if (
+    const identifyingFieldsChanged =
       dto.className !== undefined ||
       dto.level !== undefined ||
-      dto.stream !== undefined
-    ) {
-      const duplicateClass =
-        await classRepository.findOne({
-          where: {
-            schoolId,
-            className:
-              dto.className ?? schoolClass.className,
-            level:
-              dto.level ?? schoolClass.level,
-            stream:
-              dto.stream ?? schoolClass.stream,
-          },
-        });
+      dto.stream !== undefined;
+
+    if (identifyingFieldsChanged) {
+      const duplicateClass = await this.classRepository.findOne({
+        where: {
+          schoolId,
+          className: dto.className ?? schoolClass.className,
+          level: dto.level ?? schoolClass.level,
+          stream: dto.stream ?? schoolClass.stream,
+        },
+      });
 
       if (
         duplicateClass &&
@@ -219,11 +241,12 @@ export class ClassService {
       }
     }
 
-    // Apply changes
     Object.assign(schoolClass, dto);
 
     const updatedClass =
-      await classRepository.save(schoolClass);
+      await this.classRepository.save(schoolClass);
+
+    await this.invalidateClassCache(schoolId, classId);
 
     return {
       message: 'Class updated successfully',
@@ -235,14 +258,8 @@ export class ClassService {
   // DELETE CLASS
   // ==========================================
 
-  async remove(
-    schoolId: string,
-    classId: string,
-  ) {
-    const classRepository =
-      this.dataSource.getRepository(Class);
-
-    const schoolClass = await classRepository.findOne({
+  async remove(schoolId: string, classId: string) {
+    const schoolClass = await this.classRepository.findOne({
       where: {
         id: classId,
         schoolId,
@@ -255,7 +272,9 @@ export class ClassService {
       );
     }
 
-    await classRepository.remove(schoolClass);
+    await this.classRepository.remove(schoolClass);
+
+    await this.invalidateClassCache(schoolId, classId);
 
     return {
       message: 'Class deleted successfully',

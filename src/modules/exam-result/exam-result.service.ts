@@ -1,3 +1,4 @@
+
 import {
   BadRequestException,
   ConflictException,
@@ -7,7 +8,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-// Entities
 import { ExamResult } from './entities/exam-result.entity.js';
 import { Student } from '../student/entities/student.entity.js';
 import { Subject } from '../subject/entities/subject.entity.js';
@@ -15,13 +15,17 @@ import { Exam } from '../exam/entities/exam.entity.js';
 import { Term } from '../term/entities/term.entity.js';
 import { School } from '../school/entities/school.entity.js';
 import { Enrollment } from '../enrollment/entities/enrollment.entity.js';
+import { SchoolMembership } from '../school-membership/entities/school-membership.entity.js';
+import { UserRole } from '../auth/entities/user.entity.js';
 
-// DTOs
 import { CreateExamResultDto } from './dto/create-exam-result.dto.js';
 import { UpdateExamResultDto } from './dto/update-exam-result.dto.js';
+import { RedisService } from '../../redis/redis.service.js';
 
 @Injectable()
 export class ExamResultService {
+  private readonly CACHE_TTL = 60;
+
   constructor(
     @InjectRepository(ExamResult)
     private readonly examResultRepository: Repository<ExamResult>,
@@ -43,7 +47,75 @@ export class ExamResultService {
 
     @InjectRepository(Enrollment)
     private readonly enrollmentRepository: Repository<Enrollment>,
+
+    @InjectRepository(SchoolMembership)
+    private readonly membershipRepository: Repository<SchoolMembership>,
+
+    private readonly redisService: RedisService,
   ) {}
+
+  // ============================================================
+  // CACHE HELPERS
+  // ============================================================
+
+  private versionKey(schoolId: string): string {
+    return `school:${schoolId}:exam-results:cache-version`;
+  }
+
+  private async getCacheVersion(schoolId: string): Promise<string> {
+    const version = await this.redisService.getJson<string>(
+      this.versionKey(schoolId),
+    );
+
+    return version ?? '1';
+  }
+
+  private async getCacheKey(
+    schoolId: string,
+    query: string,
+  ): Promise<string> {
+    const version = await this.getCacheVersion(schoolId);
+
+    return `school:${schoolId}:exam-results:v${version}:${query}`;
+  }
+
+  private async getOrSetCache<T>(
+    key: string,
+    loader: () => Promise<T>,
+  ): Promise<T> {
+    const cached = await this.redisService.getJson<T>(key);
+
+    if (cached !== null && cached !== undefined) {
+      return cached;
+    }
+
+    const value = await loader();
+
+    await this.redisService.setJson(
+      key,
+      value,
+      this.CACHE_TTL,
+    );
+
+    return value;
+  }
+
+  /**
+   * Invalidates all result queries for this school by changing
+   * the namespace version. Old entries expire via their TTL.
+   */
+  private async invalidateSchoolResultCaches(
+    schoolId: string,
+  ): Promise<void> {
+    const current = await this.getCacheVersion(schoolId);
+    const next = `${Date.now()}-${current}`;
+
+    await this.redisService.setJson(
+      this.versionKey(schoolId),
+      next,
+      24 * 60 * 60,
+    );
+  }
 
   // ============================================================
   // CREATE
@@ -53,74 +125,19 @@ export class ExamResultService {
     schoolId: string,
     dto: CreateExamResultDto,
   ): Promise<ExamResult> {
-    // ----------------------------------------------------------
-    // 1. School must exist
-    // ----------------------------------------------------------
-
     await this.verifySchool(schoolId);
 
-    // ----------------------------------------------------------
-    // 2. Exam must belong to this school
-    // ----------------------------------------------------------
-
-    const exam = await this.examRepository.findOne({
-      where: {
-        id: dto.examId,
-        schoolId,
-      },
-    });
-
-    if (!exam) {
-      throw new NotFoundException(
-        `Exam ${dto.examId} was not found in school ${schoolId}`,
-      );
-    }
-
-    // ----------------------------------------------------------
-    // 3. Subject must belong to this school
-    // ----------------------------------------------------------
-
-    const subject = await this.subjectRepository.findOne({
-      where: {
-        id: dto.subjectId,
-        schoolId,
-      },
-    });
-
-    if (!subject) {
-      throw new NotFoundException(
-        `Subject ${dto.subjectId} was not found in school ${schoolId}`,
-      );
-    }
-
-    // ----------------------------------------------------------
-    // 4. Student must belong to this school
-    // ----------------------------------------------------------
-
-    await this.verifyStudentInSchool(
-      dto.studentId,
-      schoolId,
-    );
-
-    // ----------------------------------------------------------
-    // 5. Term must exist
-    // ----------------------------------------------------------
+    const exam = await this.verifyExam(dto.examId, schoolId);
+    await this.verifySubject(dto.subjectId, schoolId);
+    await this.verifyStudentInSchool(dto.studentId, schoolId);
 
     const term = await this.termRepository.findOne({
-      where: {
-        id: dto.termId,
-      },
+      where: { id: dto.termId },
     });
 
     if (!term) {
-      throw new NotFoundException(
-        `Term ${dto.termId} not found`,
-      );
+      throw new NotFoundException(`Term ${dto.termId} not found`);
     }
-
-    // ----------------------------------------------------------
-    // 6. Result term must match exam term
-    // ----------------------------------------------------------
 
     if (exam.termId !== dto.termId) {
       throw new BadRequestException(
@@ -128,19 +145,11 @@ export class ExamResultService {
       );
     }
 
-    // ----------------------------------------------------------
-    // 7. Result term must belong to exam academic year
-    // ----------------------------------------------------------
-
     if (term.academicYearId !== exam.academicYearId) {
       throw new BadRequestException(
         'The result term does not belong to the exam academic year',
       );
     }
-
-    // ----------------------------------------------------------
-    // 8. Student must be enrolled for this exam period
-    // ----------------------------------------------------------
 
     const enrollment = await this.enrollmentRepository.findOne({
       where: {
@@ -156,28 +165,19 @@ export class ExamResultService {
       );
     }
 
-    // ----------------------------------------------------------
-    // 9. Prevent duplicate result
-    // ----------------------------------------------------------
-
-    const existingResult =
-      await this.examResultRepository.findOne({
-        where: {
-          studentId: dto.studentId,
-          subjectId: dto.subjectId,
-          examId: dto.examId,
-        },
-      });
+    const existingResult = await this.examResultRepository.findOne({
+      where: {
+        studentId: dto.studentId,
+        subjectId: dto.subjectId,
+        examId: dto.examId,
+      },
+    });
 
     if (existingResult) {
       throw new ConflictException(
         'A result already exists for this student, subject, and exam',
       );
     }
-
-    // ----------------------------------------------------------
-    // 10. Create
-    // ----------------------------------------------------------
 
     const result = this.examResultRepository.create({
       studentId: dto.studentId,
@@ -187,31 +187,35 @@ export class ExamResultService {
       score: dto.score,
     });
 
-    return this.examResultRepository.save(result);
+    const savedResult = await this.examResultRepository.save(result);
+
+    await this.invalidateSchoolResultCaches(schoolId);
+
+    return savedResult;
   }
 
   // ============================================================
   // FIND ALL RESULTS FOR SCHOOL
   // ============================================================
 
-  async findBySchool(
-    schoolId: string,
-  ): Promise<ExamResult[]> {
+  async findBySchool(schoolId: string): Promise<ExamResult[]> {
     await this.verifySchool(schoolId);
 
-    return this.examResultRepository
-      .createQueryBuilder('result')
-      .innerJoinAndSelect('result.student', 'student')
-      .innerJoinAndSelect('result.subject', 'subject')
-      .innerJoinAndSelect('result.exam', 'exam')
-      .innerJoinAndSelect('result.term', 'term')
-      .where('exam.schoolId = :schoolId', {
-        schoolId,
-      })
-      .orderBy('exam.startDate', 'DESC')
-      .addOrderBy('student.lastName', 'ASC')
-      .addOrderBy('subject.name', 'ASC')
-      .getMany();
+    const key = await this.getCacheKey(schoolId, 'all');
+
+    return this.getOrSetCache(key, () =>
+      this.examResultRepository
+        .createQueryBuilder('result')
+        .innerJoinAndSelect('result.student', 'student')
+        .innerJoinAndSelect('result.subject', 'subject')
+        .innerJoinAndSelect('result.exam', 'exam')
+        .innerJoinAndSelect('result.term', 'term')
+        .where('exam.schoolId = :schoolId', { schoolId })
+        .orderBy('exam.startDate', 'DESC')
+        .addOrderBy('student.lastName', 'ASC')
+        .addOrderBy('subject.name', 'ASC')
+        .getMany(),
+    );
   }
 
   // ============================================================
@@ -223,27 +227,26 @@ export class ExamResultService {
     subjectId: string,
   ): Promise<ExamResult[]> {
     await this.verifySchool(schoolId);
+    await this.verifySubject(subjectId, schoolId);
 
-    await this.verifySubject(
-      subjectId,
+    const key = await this.getCacheKey(
       schoolId,
+      `subject:${subjectId}`,
     );
 
-    return this.examResultRepository
-      .createQueryBuilder('result')
-      .innerJoinAndSelect('result.student', 'student')
-      .innerJoinAndSelect('result.subject', 'subject')
-      .innerJoinAndSelect('result.exam', 'exam')
-      .innerJoinAndSelect('result.term', 'term')
-      .where('result.subjectId = :subjectId', {
-        subjectId,
-      })
-      .andWhere('exam.schoolId = :schoolId', {
-        schoolId,
-      })
-      .orderBy('exam.startDate', 'DESC')
-      .addOrderBy('student.lastName', 'ASC')
-      .getMany();
+    return this.getOrSetCache(key, () =>
+      this.examResultRepository
+        .createQueryBuilder('result')
+        .innerJoinAndSelect('result.student', 'student')
+        .innerJoinAndSelect('result.subject', 'subject')
+        .innerJoinAndSelect('result.exam', 'exam')
+        .innerJoinAndSelect('result.term', 'term')
+        .where('result.subjectId = :subjectId', { subjectId })
+        .andWhere('exam.schoolId = :schoolId', { schoolId })
+        .orderBy('exam.startDate', 'DESC')
+        .addOrderBy('student.lastName', 'ASC')
+        .getMany(),
+    );
   }
 
   // ============================================================
@@ -256,34 +259,27 @@ export class ExamResultService {
     examId: string,
   ): Promise<ExamResult[]> {
     await this.verifySchool(schoolId);
+    await this.verifyStudentInSchool(studentId, schoolId);
+    await this.verifyExam(examId, schoolId);
 
-    await this.verifyStudentInSchool(
-      studentId,
+    const key = await this.getCacheKey(
       schoolId,
+      `student:${studentId}:exam:${examId}`,
     );
 
-    await this.verifyExam(
-      examId,
-      schoolId,
+    return this.getOrSetCache(key, () =>
+      this.examResultRepository
+        .createQueryBuilder('result')
+        .innerJoinAndSelect('result.student', 'student')
+        .innerJoinAndSelect('result.subject', 'subject')
+        .innerJoinAndSelect('result.exam', 'exam')
+        .innerJoinAndSelect('result.term', 'term')
+        .where('result.studentId = :studentId', { studentId })
+        .andWhere('result.examId = :examId', { examId })
+        .andWhere('exam.schoolId = :schoolId', { schoolId })
+        .orderBy('subject.name', 'ASC')
+        .getMany(),
     );
-
-    return this.examResultRepository
-      .createQueryBuilder('result')
-      .innerJoinAndSelect('result.student', 'student')
-      .innerJoinAndSelect('result.subject', 'subject')
-      .innerJoinAndSelect('result.exam', 'exam')
-      .innerJoinAndSelect('result.term', 'term')
-      .where('result.studentId = :studentId', {
-        studentId,
-      })
-      .andWhere('result.examId = :examId', {
-        examId,
-      })
-      .andWhere('exam.schoolId = :schoolId', {
-        schoolId,
-      })
-      .orderBy('subject.name', 'ASC')
-      .getMany();
   }
 
   // ============================================================
@@ -297,20 +293,15 @@ export class ExamResultService {
   ): Promise<ExamResult[]> {
     await this.verifySchool(schoolId);
 
-    const exam = await this.verifyExam(
-      examId,
+    const exam = await this.verifyExam(examId, schoolId);
+
+    const key = await this.getCacheKey(
       schoolId,
+      `class:${classId}:exam:${examId}`,
     );
 
-    /*
-     * Class membership is determined by Enrollment.
-     *
-     * We only want students who belonged to this class
-     * during the academic year + term of the exam.
-     */
-
-    const enrollments =
-      await this.enrollmentRepository.find({
+    return this.getOrSetCache(key, async () => {
+      const enrollments = await this.enrollmentRepository.find({
         where: {
           classId,
           academicYearId: exam.academicYearId,
@@ -318,32 +309,27 @@ export class ExamResultService {
         },
       });
 
-    if (enrollments.length === 0) {
-      return [];
-    }
+      const studentIds = [
+        ...new Set(enrollments.map((item) => item.studentId)),
+      ];
 
-    const studentIds = enrollments.map(
-      (enrollment) => enrollment.studentId,
-    );
+      if (studentIds.length === 0) {
+        return [];
+      }
 
-    return this.examResultRepository
-      .createQueryBuilder('result')
-      .innerJoinAndSelect('result.student', 'student')
-      .innerJoinAndSelect('result.subject', 'subject')
-      .innerJoinAndSelect('result.exam', 'exam')
-      .innerJoinAndSelect('result.term', 'term')
-      .where('result.studentId IN (:...studentIds)', {
-        studentIds,
-      })
-      .andWhere('result.examId = :examId', {
-        examId,
-      })
-      .andWhere('exam.schoolId = :schoolId', {
-        schoolId,
-      })
-      .orderBy('student.lastName', 'ASC')
-      .addOrderBy('subject.name', 'ASC')
-      .getMany();
+      return this.examResultRepository
+        .createQueryBuilder('result')
+        .innerJoinAndSelect('result.student', 'student')
+        .innerJoinAndSelect('result.subject', 'subject')
+        .innerJoinAndSelect('result.exam', 'exam')
+        .innerJoinAndSelect('result.term', 'term')
+        .where('result.studentId IN (:...studentIds)', { studentIds })
+        .andWhere('result.examId = :examId', { examId })
+        .andWhere('exam.schoolId = :schoolId', { schoolId })
+        .orderBy('student.lastName', 'ASC')
+        .addOrderBy('subject.name', 'ASC')
+        .getMany();
+    });
   }
 
   // ============================================================
@@ -356,53 +342,39 @@ export class ExamResultService {
     subjectId: string,
   ): Promise<ExamResult[]> {
     await this.verifySchool(schoolId);
+    await this.verifySubject(subjectId, schoolId);
 
-    await this.verifySubject(
-      subjectId,
+    const key = await this.getCacheKey(
       schoolId,
+      `class:${classId}:subject:${subjectId}`,
     );
 
-    /*
-     * This endpoint intentionally returns historical results
-     * for the class + subject.
-     *
-     * For a report card, use the student + term endpoint
-     * instead because academic period matters.
-     */
-
-    const enrollments =
-      await this.enrollmentRepository.find({
-        where: {
-          classId,
-        },
+    return this.getOrSetCache(key, async () => {
+      const enrollments = await this.enrollmentRepository.find({
+        where: { classId },
       });
 
-    if (enrollments.length === 0) {
-      return [];
-    }
+      const studentIds = [
+        ...new Set(enrollments.map((item) => item.studentId)),
+      ];
 
-    const studentIds = enrollments.map(
-      (enrollment) => enrollment.studentId,
-    );
+      if (studentIds.length === 0) {
+        return [];
+      }
 
-    return this.examResultRepository
-      .createQueryBuilder('result')
-      .innerJoinAndSelect('result.student', 'student')
-      .innerJoinAndSelect('result.subject', 'subject')
-      .innerJoinAndSelect('result.exam', 'exam')
-      .innerJoinAndSelect('result.term', 'term')
-      .where('result.studentId IN (:...studentIds)', {
-        studentIds,
-      })
-      .andWhere('result.subjectId = :subjectId', {
-        subjectId,
-      })
-      .andWhere('exam.schoolId = :schoolId', {
-        schoolId,
-      })
-      .orderBy('exam.startDate', 'DESC')
-      .addOrderBy('student.lastName', 'ASC')
-      .getMany();
+      return this.examResultRepository
+        .createQueryBuilder('result')
+        .innerJoinAndSelect('result.student', 'student')
+        .innerJoinAndSelect('result.subject', 'subject')
+        .innerJoinAndSelect('result.exam', 'exam')
+        .innerJoinAndSelect('result.term', 'term')
+        .where('result.studentId IN (:...studentIds)', { studentIds })
+        .andWhere('result.subjectId = :subjectId', { subjectId })
+        .andWhere('exam.schoolId = :schoolId', { schoolId })
+        .orderBy('exam.startDate', 'DESC')
+        .addOrderBy('student.lastName', 'ASC')
+        .getMany();
+    });
   }
 
   // ============================================================
@@ -415,32 +387,19 @@ export class ExamResultService {
     termId: string,
   ): Promise<ExamResult[]> {
     await this.verifySchool(schoolId);
-
-    await this.verifyStudentInSchool(
-      studentId,
-      schoolId,
-    );
+    await this.verifyStudentInSchool(studentId, schoolId);
 
     const term = await this.termRepository.findOne({
-      where: {
-        id: termId,
-      },
+      where: { id: termId },
     });
 
     if (!term) {
-      throw new NotFoundException(
-        `Term ${termId} not found`,
-      );
+      throw new NotFoundException(`Term ${termId} not found`);
     }
 
-    // Student must actually be enrolled in this term.
-    const enrollment =
-      await this.enrollmentRepository.findOne({
-        where: {
-          studentId,
-          termId,
-        },
-      });
+    const enrollment = await this.enrollmentRepository.findOne({
+      where: { studentId, termId },
+    });
 
     if (!enrollment) {
       throw new BadRequestException(
@@ -448,24 +407,25 @@ export class ExamResultService {
       );
     }
 
-    return this.examResultRepository
-      .createQueryBuilder('result')
-      .innerJoinAndSelect('result.student', 'student')
-      .innerJoinAndSelect('result.subject', 'subject')
-      .innerJoinAndSelect('result.exam', 'exam')
-      .innerJoinAndSelect('result.term', 'term')
-      .where('result.studentId = :studentId', {
-        studentId,
-      })
-      .andWhere('result.termId = :termId', {
-        termId,
-      })
-      .andWhere('exam.schoolId = :schoolId', {
-        schoolId,
-      })
-      .orderBy('exam.startDate', 'DESC')
-      .addOrderBy('subject.name', 'ASC')
-      .getMany();
+    const key = await this.getCacheKey(
+      schoolId,
+      `student:${studentId}:term:${termId}`,
+    );
+
+    return this.getOrSetCache(key, () =>
+      this.examResultRepository
+        .createQueryBuilder('result')
+        .innerJoinAndSelect('result.student', 'student')
+        .innerJoinAndSelect('result.subject', 'subject')
+        .innerJoinAndSelect('result.exam', 'exam')
+        .innerJoinAndSelect('result.term', 'term')
+        .where('result.studentId = :studentId', { studentId })
+        .andWhere('result.termId = :termId', { termId })
+        .andWhere('exam.schoolId = :schoolId', { schoolId })
+        .orderBy('exam.startDate', 'DESC')
+        .addOrderBy('subject.name', 'ASC')
+        .getMany(),
+    );
   }
 
   // ============================================================
@@ -478,44 +438,34 @@ export class ExamResultService {
   ): Promise<ExamResult> {
     await this.verifySchool(schoolId);
 
-    const result =
-      await this.examResultRepository
+    const key = await this.getCacheKey(
+      schoolId,
+      `one:${examResultId}`,
+    );
+
+    return this.getOrSetCache(key, async () => {
+      const result = await this.examResultRepository
         .createQueryBuilder('result')
-        .innerJoinAndSelect(
-          'result.student',
-          'student',
-        )
-        .innerJoinAndSelect(
-          'result.subject',
-          'subject',
-        )
-        .innerJoinAndSelect(
-          'result.exam',
-          'exam',
-        )
-        .innerJoinAndSelect(
-          'result.term',
-          'term',
-        )
-        .where('result.id = :examResultId', {
-          examResultId,
-        })
-        .andWhere('exam.schoolId = :schoolId', {
-          schoolId,
-        })
+        .innerJoinAndSelect('result.student', 'student')
+        .innerJoinAndSelect('result.subject', 'subject')
+        .innerJoinAndSelect('result.exam', 'exam')
+        .innerJoinAndSelect('result.term', 'term')
+        .where('result.id = :examResultId', { examResultId })
+        .andWhere('exam.schoolId = :schoolId', { schoolId })
         .getOne();
 
-    if (!result) {
-      throw new NotFoundException(
-        `Exam result ${examResultId} not found`,
-      );
-    }
+      if (!result) {
+        throw new NotFoundException(
+          `Exam result ${examResultId} not found`,
+        );
+      }
 
-    return result;
+      return result;
+    });
   }
 
   // ============================================================
-  // UPDATE
+  // UPDATE RESULT
   // ============================================================
 
   async update(
@@ -523,44 +473,34 @@ export class ExamResultService {
     examResultId: string,
     dto: UpdateExamResultDto,
   ): Promise<ExamResult> {
-    const result = await this.findOne(
-      schoolId,
-      examResultId,
-    );
+    // Fetch from the database directly for a correction.
+    const result = await this.findOne(schoolId, examResultId);
 
-    /*
-     * Update DTO should ideally contain only `score`.
-     *
-     * Do NOT allow changing:
-     * - studentId
-     * - subjectId
-     * - examId
-     * - termId
-     *
-     * Those fields define the identity/context of the result.
-     */
-
+    // Result identity fields should not be changed by this DTO.
     if (dto.score !== undefined) {
       result.score = dto.score;
     }
 
-    return this.examResultRepository.save(result);
+    const updated = await this.examResultRepository.save(result);
+
+    await this.invalidateSchoolResultCaches(schoolId);
+
+    return updated;
   }
 
   // ============================================================
-  // DELETE
+  // DELETE RESULT
   // ============================================================
 
   async remove(
     schoolId: string,
     examResultId: string,
   ): Promise<{ message: string }> {
-    const result = await this.findOne(
-      schoolId,
-      examResultId,
-    );
+    const result = await this.findOne(schoolId, examResultId);
 
     await this.examResultRepository.remove(result);
+
+    await this.invalidateSchoolResultCaches(schoolId);
 
     return {
       message: `Exam result ${examResultId} deleted successfully`,
@@ -568,23 +508,16 @@ export class ExamResultService {
   }
 
   // ============================================================
-  // PRIVATE HELPERS
+  // VALIDATION HELPERS
   // ============================================================
 
-  private async verifySchool(
-    schoolId: string,
-  ): Promise<School> {
-    const school =
-      await this.schoolRepository.findOne({
-        where: {
-          id: schoolId,
-        },
-      });
+  private async verifySchool(schoolId: string): Promise<School> {
+    const school = await this.schoolRepository.findOne({
+      where: { id: schoolId },
+    });
 
     if (!school) {
-      throw new NotFoundException(
-        `School ${schoolId} not found`,
-      );
+      throw new NotFoundException(`School ${schoolId} not found`);
     }
 
     return school;
@@ -594,13 +527,9 @@ export class ExamResultService {
     examId: string,
     schoolId: string,
   ): Promise<Exam> {
-    const exam =
-      await this.examRepository.findOne({
-        where: {
-          id: examId,
-          schoolId,
-        },
-      });
+    const exam = await this.examRepository.findOne({
+      where: { id: examId, schoolId },
+    });
 
     if (!exam) {
       throw new NotFoundException(
@@ -615,13 +544,9 @@ export class ExamResultService {
     subjectId: string,
     schoolId: string,
   ): Promise<Subject> {
-    const subject =
-      await this.subjectRepository.findOne({
-        where: {
-          id: subjectId,
-          schoolId,
-        },
-      });
+    const subject = await this.subjectRepository.findOne({
+      where: { id: subjectId, schoolId },
+    });
 
     if (!subject) {
       throw new NotFoundException(
@@ -636,44 +561,23 @@ export class ExamResultService {
     studentId: string,
     schoolId: string,
   ): Promise<Student> {
-    const student =
-      await this.studentRepository.findOne({
-        where: {
-          id: studentId,
-        },
-      });
+    const student = await this.studentRepository.findOne({
+      where: { id: studentId },
+    });
 
     if (!student) {
-      throw new NotFoundException(
-        `Student ${studentId} not found`,
-      );
+      throw new NotFoundException(`Student ${studentId} not found`);
     }
 
-    /*
-     * Student does not directly own schoolId.
-     *
-     * Therefore we establish school membership through
-     * Enrollment -> Class -> School.
-     */
+    const membership = await this.membershipRepository.findOne({
+      where: {
+        userId: studentId,
+        schoolId,
+        role: UserRole.STUDENT,
+      },
+    });
 
-    const enrollment =
-      await this.enrollmentRepository
-        .createQueryBuilder('enrollment')
-        .innerJoin(
-          'enrollment.class',
-          'class',
-        )
-        .where(
-          'enrollment.studentId = :studentId',
-          { studentId },
-        )
-        .andWhere(
-          'class.schoolId = :schoolId',
-          { schoolId },
-        )
-        .getOne();
-
-    if (!enrollment) {
+    if (!membership) {
       throw new NotFoundException(
         `Student ${studentId} does not belong to school ${schoolId}`,
       );

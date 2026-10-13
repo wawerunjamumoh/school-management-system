@@ -6,13 +6,17 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
 import { AcademicYearService } from './academic-year.service.js';
 import { CreateAcademicYearDto } from './dto/create-academic-year.dto.js';
 import { UpdateAcademicYearDto } from './dto/update-academic-year.dto.js';
+import {JwtAuthGuard} from '../auth/guards/jwt-auth.guard.js';
+
 
 @Controller('schools/:schoolId/academic-years')
+@UseGuards(JwtAuthGuard)
 export class AcademicYearController {
   constructor(private readonly academicYearService: AcademicYearService) {}
 
